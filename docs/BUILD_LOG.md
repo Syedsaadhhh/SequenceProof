@@ -224,3 +224,264 @@ API suite (5 scenarios via in-process server):
 - IBM Bob is used in the engineering workflow and evidenced separately; the
   app does not claim a live Bob inference API.
 
+---
+
+## 2026-09-27 — Run 2: Master frontend & UI/UX design system implementation
+
+### Scope and objective
+
+Execute the entire Run 2 specification from `docs/RUN_2_ANTIGRAVITY_FRONTEND_PROMPT.md`
+and `docs/SEQUENCEPROOF_UI_UX_DESIGN_SYSTEM.md`: turn the SequenceProof interface
+into an enterprise-grade proof surface delivering the core value in under 10 seconds:
+`12 noisy actions → 4-step executable proof → exact failure confirmed 5/5 → corrected implementation passes.`
+
+### Material design decisions
+
+1. **Restrained Enterprise Dark Visual Language:**
+   - Implemented exact `--sp-` tokens from Section 13 (canvas `#080b10`, surface `#0f141b`, raised `#151c25`, interactive `#1b2430`, teal accent `#67d4c1`, coral failure `#f59e72`, green success `#63d49c`, warning `#f3c969`, error `#f47c7c`).
+   - Zero external CDNs, Google Fonts, or icon libraries; native system font stacks (`Inter, ui-sans-serif...` and monospace `ui-monospace, SFMono-Regular...`) and accessible inline SVGs only.
+   - Restrained styling: no cyberpunk aesthetic, neon glows, floating cards, or 3D decorations.
+
+2. **Strict Dynamic Data Binding (No Hardcoded Successes):**
+   - All results, metrics, failure IDs, trial counts, and failure moments are dynamically computed from `POST /api/analyze` response data.
+   - Initial Hero strip clearly labels 12→4 as `Sample outcome preview (pending execution)`. Real metrics populate only upon receiving a verified API response.
+   - Failure moment card extracts `original.expected` (`card-B`) and `original.actual` (`card-A`) dynamically; omitted cleanly if missing.
+   - Confirmation strip renders dynamic cells strictly based on returned `trials` array (requiring matching status and exact `failure_id`).
+   - Corrected implementation callout dynamically reads `fixed_passes` and `fixed_result.detail`.
+   - Download proof JSON dynamically serializes the latest `/api/analyze` response into `sequenceproof-evidence.json`.
+
+3. **Trace Workspace & Dual-View Interaction:**
+   - Displays issue statement dynamically fetched from `GET /api/sample`.
+   - Segmented tab control provides both a readable numbered timeline with action badges and an editable monospace JSON editor.
+   - Real-time client-side JSON validation updates action counts, sets `aria-invalid`, and displays inline error messages.
+   - `Ctrl + Enter` (and `Cmd + Enter`) keyboard shortcut triggers analysis from anywhere in the document.
+
+4. **Honest Explanatory Pending Progression:**
+   - Pending state displays five clear stages (Validate trace, Replay from fresh state, Reduce valid candidates, Confirm exact failure, Check corrected behavior) with `aria-busy="true"` and disabled buttons.
+   - No fake percentages, simulated timers, or synthetic candidate counts. Animation halts immediately upon API return.
+
+5. **Ordered Subsequence Timeline Comparison:**
+   - Subsequence matching algorithm walks `original_steps` and `reduced_steps` in order without backtracking or reordering.
+   - Retained actions receive high-contrast proof styling (`#bbf3e7` and teal border); pruned noise steps are visually struck out with reduced opacity.
+
+6. **Honest Negative & Error States:**
+   - Built dedicated states for `INVALID_TRACE`, `NOT_REPRODUCED`, `FLAKY`, malformed JSON, and network/server errors.
+   - Negative states never display reduction metrics, 12→4 equations, green verified styling, or 5/5 confirmations.
+
+7. **Responsive & Accessible Foundation:**
+   - Desktop: 42% trace workspace / 58% proof workspace split (`1380px` max width).
+   - Tablet: Single-column stacked layout preserving panel hierarchy.
+   - Mobile (<720px): Single-column layout adhering strictly to the Section 15 12-item ordering, with 0 horizontal page overflow (`scrollWidth <= clientWidth`).
+   - Accessibility: Semantic headings, scoped `aria-live="polite"` announcer, visible `:focus-visible` outlines, and full `prefers-reduced-motion` compliance.
+
+### Changed files
+
+| File | Change |
+| --- | --- |
+| `index.html` | Complete Run 2 master frontend implementation adhering to UI/UX design system |
+| `docs/BUILD_LOG.md` | This entry |
+
+### Verification results
+
+Unit test suite (`python -m unittest -v`):
+```
+Ran 10 tests in 0.019s
+OK
+```
+10/10 tests pass.
+
+Automated browser CDP verification suite (headless Chrome, 43 checks across 8 scenarios):
+1. **Initial load & sample data binding:** Page title, issue text from `/api/sample`, initial "Ready" phase badge, sample outcome preview strip, 12 readable timeline actions, and 12 JSON steps in editor verified.
+2. **Default sample analysis (12→4 verified):** Pending stages displayed with `aria-busy="true"`, "Verified" badge on response, `12 actions → 4 proof steps` equation, `67% fewer steps` reduction pill, live verified hero strip, `WRONG_CARD_CHARGED` badge, failure moment (`expected=card-B`, `actual=card-A`), 5/5 fresh confirmations, corrected behavior verdict passing, 12 original steps (4 retained, 8 pruned), 4 reduced proof steps, 12 events in replay table, and JSON download button verified.
+3. **Malformed editor JSON:** Inline error banner, `aria-invalid="true"`, zero network requests sent to `/api/analyze`, and "JSON needs correction" error card verified.
+4. **Protocol-invalid trace (`retry_payment` alone):** Server returns `INVALID_TRACE`, UI renders "Invalid trace" with protocol detail, no reduction metrics or 12→4 shown.
+5. **Valid non-reproducing trace:** Server returns `NOT_REPRODUCED`, UI renders "Target failure not reproduced", no verified green badge.
+6. **Reset sample:** Textarea reset to 12 steps, timeline refreshed, phase badge restored to "Ready", ready state view restored.
+7. **Responsive viewports:** Verified desktop (1280px), tablet (820px), and mobile (375px) with strictly no horizontal page scrolling.
+8. **Accessibility & keyboard navigation:** `aria-live="polite"` announcer verified, `Ctrl+Enter` shortcut verified, and 0 browser console errors recorded.
+
+Result: 43 Passed, 0 Failed across all scenarios.
+
+### Remaining limitations
+
+- Prototype operates on one deterministic synthetic checkout state machine (`sequenceproof.py`).
+- Reduction search is bounded to ≤40 steps and ≤250 checks; results are locally reduced rather than globally minimal.
+- IBM Bob is utilized within the developer engineering workflow and evidenced in `bob_sessions/`; no runtime Bob API exists.
+
+---
+
+## 2026-09-27 — Run 2.1: Evidence-hardening and interaction verification pass
+
+### Scope and objective
+
+Execute the bounded Run 2.1 evidence-hardening pass on branch `antigravity/run-2-master-frontend`. Remove misleading pre-execution claims, eliminate simulated pending timers/percentages, gracefully detect ambiguous subsequence mappings when identical actions repeat, clarify the failure oracle's first-mismatch reporting limitation, harden accessibility and responsive behaviors, and capture real headless Chrome application screenshots into `docs/screenshots/`.
+
+### Hardened corrections and implementation details
+
+1. **Elimination of Pre-Execution Success Claims:**
+   - Replaced initial equation strip and ready card with a neutral, honest workflow preview: *"Ready to verify this trace · Fresh-state replay · Exact failure identity · Fix verification"*.
+   - Ensured no claims of `12 → 4`, `4 proof steps`, `5/5 confirmed`, `WRONG_CARD_CHARGED`, or `fix passes` appear anywhere before the user executes the trace and receives a real API response.
+   - Restoring/resetting the trace faithfully returns the hero strip and ready state to this neutral workflow state.
+
+2. **Honest, Educational Pending Progression:**
+   - Removed all artificial timers (`setInterval`), fake progress percentages, and simulated step cycling.
+   - Replaced with a single honest status title: `Analyzing trace…` and an informative 5-step checklist representing the deterministic pipeline (Validate trace, Replay from fresh state, Reduce valid candidates, Confirm exact failure, Check corrected behavior).
+   - Analysis executes asynchronously and renders verified results immediately when the real API responds.
+
+3. **Conservative Subsequence Ambiguity Handling:**
+   - Implemented `checkSubsequenceAlignment(origSteps, redSteps)` which computes all valid ordered subsequence embeddings.
+   - If multiple valid embeddings exist due to identical repeated actions (e.g. repeated `add_item(notebook)` before checkout), the UI displays an explicit warning note: *"Original-row alignment is ambiguous because identical actions repeat. Showing original trace and verified reduced sequence separately without claiming specific row provenance."*
+   - Avoids false row-level provenance badges (`retained`) on ambiguous original rows while keeping the verified reduced steps cleanly highlighted.
+
+4. **Failure Oracle Limitation Clarification:**
+   - Embedded the required clarification copy verbatim in both the failure moment card and the replay event log footnote:
+     > *"The summary reports the first mismatching retry. Later attempts remain available in the replay event log."*
+   - Clarifies why only the first mismatch is surfaced in the primary card while ensuring full attempt history remains accessible.
+
+5. **Accessibility & Interaction Hardening:**
+   - Programmatic focus transfer: Active focus transfers smoothly to the `.result-view` container with `tabindex="-1"` and `.focus()` upon receiving analysis results.
+   - Double-submission guard: Analysis triggers (`run-btn`, `hero-analyze-btn`, and `Ctrl+Enter` / `Cmd+Enter`) are guarded by `isAnalyzing` to prevent duplicate concurrent API requests.
+   - Screen reader error binding: Monospace editor links directly to inline error notices via `aria-describedby="editor-error-msg"` whenever `aria-invalid="true"`.
+   - Mobile touch targets: Added explicit `min-height: 44px` rule to all action buttons (`.btn` and `.tab-btn`) on mobile viewports (<720px) to comply with accessibility touch target sizing.
+
+6. **Comprehensive Responsive & Viewport Verification:**
+   - Desktop (1280x800): Verified two-column layout (42% / 58%) with no horizontal scroll.
+   - Tablet (820x1180): Verified responsive stacked layout with intact card hierarchy and no horizontal scroll.
+   - Mobile (375x667): Verified single-column stacked layout with 0 horizontal page overflow (`document.body.scrollWidth <= window.innerWidth`).
+   - Small Mobile (320x568): Verified layout down to 320px with 0 horizontal scroll.
+   - Desktop 200% Zoom (640x400 layout): Verified graceful responsive wrapping with 0 horizontal overflow.
+
+7. **Captured Real Application Screenshots:**
+   - Captured real PNG screenshots using Chrome DevTools Protocol (CDP) into `docs/screenshots/`:
+     - `docs/screenshots/run2-desktop-verified.png` (1280x800 desktop verified state)
+     - `docs/screenshots/run2-mobile-verified.png` (375x667 mobile verified state)
+     - `docs/screenshots/run2-negative-state.png` (desktop malformed JSON error state)
+
+### Changed files
+
+| File | Change |
+| --- | --- |
+| `index.html` | Removed pre-execution claims, streamlined pending progression, added subsequence ambiguity detection and notice, added oracle limitation copy, hardened mobile touch targets (≥44px), added programmatic focus management, and connected `aria-describedby` for editor errors. |
+| `docs/screenshots/run2-desktop-verified.png` | Real headless Chrome application screenshot of desktop verified state (37,483 bytes) |
+| `docs/screenshots/run2-mobile-verified.png` | Real headless Chrome application screenshot of mobile verified state (27,116 bytes) |
+| `docs/screenshots/run2-negative-state.png` | Real headless Chrome application screenshot of negative error state (22,893 bytes) |
+| `docs/BUILD_LOG.md` | This Run 2.1 entry documenting all hardened corrections, verified checks, and limitations. |
+
+### Verification results
+
+1. **Python Unit Suite (`python -m unittest -v`):**
+   ```
+   test_adversarial_cascade_prune_not_reproduced_is_rejected ... ok
+   test_deleted_parent_prunes_orphan_but_never_invents_steps ... ok
+   test_earlier_wrong_retry_is_not_hidden_by_later_correct_retry ... ok
+   test_invalid_or_passing_trace_cannot_fake_bug ... ok
+   test_multiple_correct_retries_do_not_reproduce ... ok
+   test_post_retry_set_card_is_not_a_false_positive ... ok
+   test_reduction_accepts_valid_repaired_candidate ... ok
+   test_repair_does_not_hide_bad_parameters_or_make_a_bug ... ok
+   test_sample_reduction_preserves_exact_failure ... ok
+   test_second_trace_is_computed ... ok
+
+   Ran 10 tests in 0.019s
+   OK
+   ```
+   10/10 tests pass.
+
+2. **Automated Verification Suite (`run_2_1_verification.js`, 38 checks across 9 categories):**
+   - API Verification: `GET /api/sample` (12 actions), `POST /api/analyze` default (12→4, `WRONG_CARD_CHARGED`, 5/5 trials, fixed passes), protocol-invalid (`INVALID_TRACE`), non-reproducing (`NOT_REPRODUCED`), payload size boundary (>32 KiB returns HTTP 413).
+   - Pre-Execution Neutrality: No 12→4, 5/5, or failure IDs before execution; neutral ready state and workflow caption.
+   - Honest Pending State: Title is "Analyzing trace…", static 5-step checklist, 0 fake percentages.
+   - Real Analysis: Verified badge, real API values in hero strip, exact failure moment, oracle copy, programmatic focus to result container.
+   - Ambiguity Detection: Ambiguity notice rendered for duplicate actions, no false row-level retained badges.
+   - Negative Handling: `aria-invalid="true"`, `aria-describedby="editor-error-msg"`, editor contents preserved, negative error card displayed.
+   - Reset Behavior: Restores neutral ready state and "Ready" phase badge.
+   - Responsive & Overflow: 1280x800, 820x1180, 375x667, 320x568, and 200% zoom all report 0 horizontal overflow.
+   - Accessibility & Cleanliness: Mobile touch targets ≥44px, `Ctrl+Enter` triggers analysis, 0 browser console errors.
+   - Result: 38 Passed, 0 Failed.
+
+### Genuine limitations
+
+#### Prototype Boundaries
+- **Single Synthetic Protocol:** Engine evaluates a dedicated e-commerce checkout state machine defined in `sequenceproof.py` (cart items, cards, payment retries); it does not parse generic arbitrary application protocols.
+- **Locally Reduced Traces:** Trace reduction utilizes bounded delta-debugging (≤40 steps, ≤250 candidate checks); results represent verifiable local reductions rather than provable global minima.
+- **Workflow-Embedded IBM Bob:** IBM Bob was used as part of the human-in-the-loop agentic workflow and recorded in `bob_sessions/`; there is no live remote IBM Bob API endpoint integrated into the client application.
+
+#### Technical Debt
+- **Single-File Frontend (`index.html`):** The entire application (HTML, CSS, SVGs, and JavaScript) is packaged in a single 2,450-line file without external bundling or module separation.
+- **First Mismatch Oracle Surface:** The failure oracle captures all retry attempts, but the top-level API payload surfaces the expected/actual values of the first mismatching attempt; later attempts must be inspected via the replay event log.
+
+---
+
+## 2026-09-27 — Run 2.2: limitation-closure pass
+
+### Closed engineering limitations
+
+1. **Frontend monolith removed:** `index.html` is now the semantic shell,
+   `static/styles.css` owns the visual system, and `static/app.js` owns API,
+   state, validation, and rendering logic. `server.py` exposes only an exact
+   allowlist of those assets and does not expose source files or directory
+   traversal paths.
+2. **Complete retry evidence:** every retry attempt receives an attempt number
+   and trace-step index. The replay response includes `retry_attempts`, the
+   complete `mismatches` list, and `mismatch_count`. Compatibility fields
+   `expected` and `actual` still reference the first mismatch so existing
+   clients remain valid. The UI now lists every mismatch rather than directing
+   users to infer later failures from event history.
+3. **Precise minimality evidence:** the bounded reducer now performs a final
+   single-deletion certificate pass inside the same 250-check budget. A
+   certified result means no one retained step can be removed, including
+   consequent orphan pruning, while preserving the exact failure ID. The API
+   explicitly returns `one-minimal` or `bounded-local`; it never claims global
+   minimality.
+4. **Accurate event history:** charged and expected cards appear only on actual
+   `retry_payment` events. Later unrelated events no longer inherit the last
+   charge and therefore cannot be visually misclassified as additional
+   mismatches.
+5. **Reduced-motion behavior hardened:** the interface removes the decorative
+   spinner and short transitions without globally destroying useful state
+   feedback.
+
+### Changed files
+
+| File | Change |
+| --- | --- |
+| `index.html` | Reduced to the semantic shell and external asset references |
+| `static/styles.css` | Extracted visual system plus mismatch and reduced-motion styles |
+| `static/app.js` | Extracted interaction layer; complete mismatch and minimality rendering |
+| `server.py` | Exact static-asset allowlist and `nosniff` responses |
+| `sequenceproof.py` | Complete retry evidence and bounded one-minimal certificate |
+| `test_sequenceproof.py` | Regression coverage for all mismatches, event accuracy, and certificate |
+| `test_server.py` | Asset-serving, source-exposure, and API-contract coverage |
+| `README.md` | Updated contract and repository map |
+| `docs/ARCHITECTURE.md` | Updated component and proof flow |
+| `docs/BUILD_LOG.md` | This observed limitation-closure entry |
+
+### Observed verification
+
+`python -m unittest -v` completed with **16 tests passing**. The default owned
+sample remains `12 actions → 4 proof steps`, preserves
+`WRONG_CARD_CHARGED` in all **5/5** fresh confirmation runs, and the corrected
+implementation passes. The complete run used 35 candidate checks and returned:
+
+```json
+{
+  "kind": "one-minimal",
+  "certified": true,
+  "checks": 4
+}
+```
+
+The multi-retry API regression exposes both mismatches in attempt and trace
+order. HTTP tests confirm `/`, `/static/styles.css`, and `/static/app.js` load,
+while `/server.py` returns 404. `node --check static/app.js` also passes.
+
+### Deliberate product boundaries—not unresolved defects
+
+- SequenceProof intentionally proves one narrow, owned checkout protocol; it
+  does not execute arbitrary repositories or untrusted third-party code.
+- Search remains bounded to 40 actions and 250 candidate checks. The product
+  reports a precise one-minimal certificate when completed and otherwise
+  labels the result `bounded-local`; it never claims a global minimum.
+- IBM Bob is the required implementation and review workspace evidenced in
+  `bob_sessions/`. No live Bob runtime API is claimed or fabricated.
+

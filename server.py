@@ -6,16 +6,24 @@ import os
 from sequenceproof import SAMPLE, analyze
 
 ROOT = Path(__file__).parent
+STATIC_FILES = {
+    "/static/styles.css": (ROOT / "static" / "styles.css", "text/css; charset=utf-8"),
+    "/static/app.js": (ROOT / "static" / "app.js", "text/javascript; charset=utf-8"),
+}
 
 
 class Handler(BaseHTTPRequestHandler):
-    def respond(self, data, status=200):
-        body = json.dumps(data).encode()
+    def send_bytes(self, body, content_type, status=200):
         self.send_response(status)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
+        self.send_header("X-Content-Type-Options", "nosniff")
         self.end_headers()
         self.wfile.write(body)
+
+    def respond(self, data, status=200):
+        body = json.dumps(data).encode()
+        self.send_bytes(body, "application/json; charset=utf-8", status)
 
     def do_GET(self):
         if self.path == "/api/sample":
@@ -23,11 +31,10 @@ class Handler(BaseHTTPRequestHandler):
                                  "issue": "A retry sometimes charges the old card after the customer chooses a new one."})
         if self.path in {"/", "/index.html"}:
             body = (ROOT / "index.html").read_bytes()
-            self.send_response(200)
-            self.send_header("Content-Type", "text/html; charset=utf-8")
-            self.send_header("Content-Length", str(len(body)))
-            self.end_headers()
-            return self.wfile.write(body)
+            return self.send_bytes(body, "text/html; charset=utf-8")
+        if self.path in STATIC_FILES:
+            path, content_type = STATIC_FILES[self.path]
+            return self.send_bytes(path.read_bytes(), content_type)
         self.respond({"error": "Not found"}, 404)
 
     def do_POST(self):

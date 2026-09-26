@@ -52,7 +52,7 @@ Requires Python 3.10+; no external packages.
 python server.py
 ```
 
-Open `http://127.0.0.1:8000` and select **Run and reduce**. The UI calls the
+Open `http://127.0.0.1:8000` and select **Analyze trace**. The UI calls the
 actual `/api/analyze` endpoint. Edit the JSON to test another card, remove a
 necessary step, or make a passing trace. Download the execution result as JSON.
 
@@ -82,15 +82,16 @@ Content-Type: application/json
 
 The analysis response separates `INVALID_TRACE`, `NOT_REPRODUCED`,
 `REPRODUCED`, and `FLAKY`. Verified results include the reduced steps, five
-trial outcomes, candidate-check count, orphan-pruning count, corrected-code
-result, and runtime for this sample.
+trial outcomes, every mismatching retry, a one-minimality certificate when the
+bounded budget permits it, candidate-check count, orphan-pruning count,
+corrected-code result, and runtime for this sample.
 
 ## What the proof means
 
-- A valid trace is executed from fresh state. The failure oracle checks every recorded retry attempt and reports `WRONG_CARD_CHARGED` when the card actually charged differs from the card active at that retry moment.
+- A valid trace is executed from fresh state. The failure oracle checks every recorded retry attempt and reports `WRONG_CARD_CHARGED` when the card actually charged differs from the card active at that retry moment. The response exposes the complete `mismatches` list; `expected` and `actual` remain aliases for the first mismatch for compatibility.
 - Reduction uses bounded `ddmin` with up to 250 candidate checks. A checkout-specific repair pass prunes orphaned `remove_item`, `begin_checkout`, and `retry_payment` steps when their prerequisite disappears. It never inserts or reorders actions. Every repaired candidate still needs a valid fresh replay with the same `WRONG_CARD_CHARGED` failure ID; malformed parameters stay invalid.
 - The reduced trace is replayed five times from fresh state. The corrected implementation is then run on that same reduced trace.
-- This is a **locally reduced** trace, not a proof of globally shortest sequence. Results are limited to this owned sample project. No reported time saving has been measured against manual work.
+- This is a **locally reduced** trace, not a proof of globally shortest sequence. When `minimality.certified` is true, the bounded verifier has additionally confirmed that no single retained step can be removed while preserving the exact failure ID. Results are limited to this owned sample project. No reported time saving has been measured against manual work.
 - `INVALID_TRACE` and `NOT_REPRODUCED` are separate outcomes. The current deterministic fixture cannot demonstrate a true flaky result; the status is reserved for future nondeterministic cases.
 
 ## Data and scope
@@ -116,9 +117,11 @@ runtime API.
 ```text
 .
 ├── sequenceproof.py          # state machine, replay, reducer, proof
-├── server.py                 # web and API server
-├── index.html                # interactive prototype
+├── server.py                 # API and allowlisted static-file server
+├── index.html                # semantic application shell
+├── static/                   # frontend styles and state/rendering logic
 ├── test_sequenceproof.py     # behavior tests
+├── test_server.py            # HTTP, asset, and API contract tests
 ├── AGENTS.md                 # build constraints for IBM Bob and contributors
 ├── docs/                     # architecture and observed build log
 └── bob_sessions/             # required real IBM Bob task evidence

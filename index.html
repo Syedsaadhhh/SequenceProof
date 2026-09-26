@@ -1,86 +1,154 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SequenceProof — make a bug repeatable</title>
-  <style>
-    :root{color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;background:#0c1118;color:#e8eef4}
-    *{box-sizing:border-box}body{margin:0}button,textarea{font:inherit}button{cursor:pointer}
-    .shell{max-width:1260px;margin:auto;padding:26px 28px 70px}.top{display:flex;justify-content:space-between;align-items:center;gap:20px;border-bottom:1px solid #263442;padding-bottom:19px}
-    .brand{font-weight:750;letter-spacing:-.04em;font-size:22px}.brand span{color:#85d9cb}.eyebrow{color:#8da5b6;font-size:12px;letter-spacing:.12em;text-transform:uppercase}
-    .pill{font-size:12px;border:1px solid #365046;background:#142b28;color:#a1e0c3;padding:7px 11px;border-radius:30px}
-    h1{font-size:clamp(31px,4vw,51px);line-height:1.08;letter-spacing:-.055em;margin:27px 0 12px;max-width:760px}
-    .sub{color:#a9b8c6;max-width:750px;line-height:1.6;margin:0 0 26px}
-    .grid{display:grid;grid-template-columns:minmax(340px,.86fr) minmax(400px,1.14fr);gap:18px;align-items:start}
-    .panel{background:#121b25;border:1px solid #2b3b49;border-radius:15px;padding:22px;box-shadow:0 16px 60px #0002}
-    .section-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:17px}.section-head h2{font-size:17px;margin:0;letter-spacing:-.025em}
-    .tag{font-size:11px;color:#9db2c2;border:1px solid #344654;border-radius:20px;padding:5px 9px}
-    .issue{border-left:3px solid #77cbb8;padding:7px 0 7px 14px;color:#d9e5ed;line-height:1.55;margin:0 0 20px}
-    label{color:#99b0bf;font-size:12px;display:block;margin:0 0 8px;text-transform:uppercase;letter-spacing:.07em}
-    textarea{width:100%;min-height:350px;resize:vertical;background:#0b131b;color:#d2e8e1;border:1px solid #354958;border-radius:10px;padding:15px;font:13px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;outline:none}
-    textarea:focus{border-color:#83d7c3;box-shadow:0 0 0 3px #83d7c321}.actions{display:flex;align-items:center;gap:10px;margin-top:15px;flex-wrap:wrap}
-    .primary{background:#9be2ce;color:#102920;border:0;border-radius:9px;font-weight:750;padding:12px 18px}.primary:hover{background:#b2f2dd}.primary:disabled{opacity:.55;cursor:wait}
-    .ghost{border:1px solid #40515d;background:transparent;color:#d7e5ef;border-radius:9px;padding:11px 14px}.ghost:hover{border-color:#9be2ce}
-    .hint{color:#8296a4;font-size:12px;line-height:1.45}.result-empty{min-height:490px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#94a8b7;padding:35px}
-    .result-empty .mark{font-size:42px;color:#81d4c2;margin-bottom:20px}.result-empty b{color:#e4edf3;font-size:20px;margin-bottom:9px}
-    .verdict{display:flex;justify-content:space-between;align-items:start;gap:14px;border-bottom:1px solid #2b3b49;padding-bottom:17px}
-    .status{display:inline-block;border-radius:6px;padding:5px 8px;background:#332824;color:#f4b59d;font-size:11px;letter-spacing:.09em;font-weight:700}
-    .status.ok{background:#17382f;color:#a2e6c7}.big{font-size:37px;letter-spacing:-.05em;font-weight:800;line-height:1.08;margin:11px 0 4px}.muted{color:#9ab0c0;line-height:1.5}
-    .metric{display:flex;gap:10px;align-items:baseline;color:#90a5b3;font-size:14px}.metric strong{color:#f0f7f9;font-size:33px}.arrow{color:#88dac4;font-size:22px}
-    .proof{background:#0d1720;border:1px solid #2c4450;border-radius:10px;padding:14px;margin:19px 0;color:#d5e8e4}
-    .proof strong{display:block;color:#f1f6f6;margin-bottom:6px}.proof .sample{font:13px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace}
-    .traces{display:grid;grid-template-columns:1fr 1fr;gap:12px}.trace{background:#0c141c;border:1px solid #283a48;border-radius:9px;padding:13px;min-width:0}
-    .trace h3{font-size:13px;color:#aabcc9;margin:0 0 12px}.step{display:flex;gap:9px;align-items:baseline;border-top:1px solid #22323e;padding:9px 0;font:12px/1.4 ui-monospace,Consolas,monospace;overflow-wrap:anywhere}
-    .step i{color:#698396;font-style:normal;min-width:17px}.step.drop{color:#7b8c99;text-decoration:line-through}.step.keep{color:#b8f0d9}
-    details{border-top:1px solid #2c3c49;margin-top:18px;padding-top:16px}summary{cursor:pointer;color:#bce8dc;font-weight:650}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#0a1219;border-radius:8px;padding:13px;color:#abc0cc;font-size:12px;max-height:250px;overflow:auto}
-    .foot{margin-top:22px;color:#8399a9;font-size:12px;line-height:1.55}
-    @media(max-width:850px){.shell{padding:18px 15px 45px}.grid{grid-template-columns:1fr}.traces{grid-template-columns:1fr}.panel{padding:17px}textarea{min-height:250px}.top .pill{display:none}}
-  </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SequenceProof — Executable Stateful Debugging</title>
+  <link rel="stylesheet" href="/static/styles.css">
 </head>
-<body><div class="shell">
-  <div class="top"><div class="brand">Sequence<span>Proof</span></div><div class="pill">Executable debugging · sample project</div></div>
-  <div class="eyebrow" style="margin-top:26px">From report to reproduction</div>
-  <h1>Find the few steps that actually break it.</h1>
-  <p class="sub">Replay a stateful bug, remove the noise, and prove that the same failure still occurs. The result is a case another developer can run.</p>
-  <main class="grid">
-    <section class="panel"><div class="section-head"><h2>01 / Bug case</h2><span class="tag">Owned sample</span></div>
-      <p class="issue" id="issue">Loading sample…</p><label for="trace">Ordered actions · editable JSON</label>
-      <textarea id="trace" spellcheck="false" aria-label="Action trace JSON"></textarea>
-      <div class="actions"><button class="primary" id="run">Run and reduce →</button><button class="ghost" id="reset">Reset sample</button></div>
-      <p class="hint">Dependent actions orphaned by a deletion are pruned; every candidate then runs from fresh state. An invalid trace or unrelated exception never counts as the reported bug.</p>
-    </section>
-    <section class="panel" aria-live="polite"><div class="section-head"><h2>02 / Verified result</h2><span class="tag" id="phase">Ready</span></div><div id="result" class="result-empty"><div class="mark">⌁</div><b>One run turns a report into evidence.</b><div>Load the sample trace, then run it to see the observed failure and the steps that matter.</div></div></section>
-  </main>
-  <p class="foot">This prototype operates on an owned sample service. IBM Bob IDE work and its task screenshots must be added by the team in the same repository; this page does not claim a direct Bob API integration.</p>
-</div><script>
-const traceEl=document.getElementById('trace'), resultEl=document.getElementById('result'), phase=document.getElementById('phase');
-let sample;
-const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const stepText=x=>x.action+(x.item?' · '+x.item:'')+(x.card?' · '+x.card:'');
-async function load(){const r=await fetch('/api/sample'); sample=await r.json();traceEl.value=JSON.stringify(sample.trace,null,2);document.getElementById('issue').textContent=sample.issue;phase.textContent='Ready';}
-document.getElementById('reset').onclick=()=>{if(sample){traceEl.value=JSON.stringify(sample.trace,null,2);resultEl.className='result-empty';resultEl.innerHTML='<div class="mark">⌁</div><b>Sample reset.</b><div>Run the trace to see a fresh result.</div>';phase.textContent='Ready'}};
-document.getElementById('run').onclick=async()=>{
-  const button=document.getElementById('run');button.disabled=true;phase.textContent='Running';resultEl.className='result-empty';resultEl.textContent='Replaying, reducing, and checking five fresh trials…';
-  try{
-    const trace=JSON.parse(traceEl.value);const r=await fetch('/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({trace})});
-    const data=await r.json();if(!r.ok)throw Error(data.error||'Run failed');render(data);
-  }catch(err){phase.textContent='Input error';resultEl.className='result-empty';resultEl.innerHTML='<b>Could not run this trace</b><div>'+esc(err.message)+'</div>'}
-  finally{button.disabled=false}
-};
-function render(d){
-  phase.textContent=d.status;
-  if(d.status!=='REPRODUCED'){
-    resultEl.className='';resultEl.innerHTML='<div class="verdict"><div><span class="status">'+esc(d.status)+'</span><div class="big">No verified reduction</div><div class="muted">'+esc(d.original.detail)+'</div></div></div><div class="proof"><strong>Observed result</strong>'+esc(d.original.status)+' · '+esc(d.original.detail)+'</div><p class="muted">The runner will not label an invalid or passing trace as a reproduction.</p>';return;
-  }
-  const original=d.original_steps,reduced=d.reduced_steps,kept=new Set();let j=0;original.forEach((x,i)=>{if(j<reduced.length&&JSON.stringify(x)===JSON.stringify(reduced[j])){kept.add(i);j++}});
-  const list=(arr,originalSide=false)=>arr.map((x,i)=>'<div class="step '+(originalSide?(kept.has(i)?'':'drop'):'keep')+'"><i>'+String(i+1).padStart(2,'0')+'</i><span>'+esc(stepText(x))+'</span></div>').join('');
-  const detail=d.original.detail, count=d.trials.filter(x=>x.failure_id===d.failure_id).length;
-  resultEl.className='';resultEl.innerHTML='<div class="verdict"><div><span class="status ok">SAME FAILURE VERIFIED</span><div class="big">'+original.length+' actions → '+reduced.length+'</div><div class="muted">'+count+'/'+d.trials.length+' fresh runs reproduced '+esc(d.failure_id)+'</div></div><div class="metric"><strong>'+Math.round(100*(1-reduced.length/original.length))+'%</strong> fewer steps</div></div>'+
-    '<div class="proof"><strong>What broke</strong><div class="sample">'+esc(detail)+'</div><div class="muted">After the corrected retry logic: '+esc(d.fixed_result.detail)+' · '+(d.fixed_passes?'target assertion passes':'needs review')+'</div></div>'+
-    '<div class="traces"><div class="trace"><h3>Original trace · '+original.length+' steps</h3>'+list(original,true)+'</div><div class="trace"><h3>Reduced trace · '+reduced.length+' steps</h3>'+list(reduced)+'</div></div>'+
-    '<div class="actions"><button class="ghost" id="download">Download proof JSON</button><span class="hint">'+esc(d.attempts)+' candidate checks · '+esc(d.orphan_steps_pruned)+' orphan steps pruned · '+esc(d.duration_ms)+' ms on this sample</span></div>'+
-    '<details><summary>Inspect the execution proof</summary><pre>'+esc(JSON.stringify({failure_id:d.failure_id,trial_outcomes:d.trials,fixed_result:d.fixed_result,events:d.original.events},null,2))+'</pre></details>';
-  document.getElementById('download').onclick=()=>{const b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='sequenceproof-evidence.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
-}
-load().catch(e=>{document.getElementById('issue').textContent='Sample unavailable: '+e.message});
-</script></body></html>
+<body>
+  <div class="shell">
+    <!-- Top bar -->
+    <header class="top-bar">
+      <div class="brand-wrap">
+        <a href="/" class="brand">Sequence<span>Proof</span></a>
+        <span class="brand-descriptor">Executable stateful debugging</span>
+      </div>
+      <div class="top-badges">
+        <span class="badge badge-sample">Synthetic sample</span>
+        <span class="badge badge-bounded" title="Analysis bounds: ≤40 actions, ≤250 candidate checks, ≤32 KiB">Bounded analysis</span>
+      </div>
+    </header>
+
+    <!-- Hero -->
+    <div class="hero">
+      <div class="hero-eyebrow">From noisy trace to executable proof</div>
+      <h1>Find the few actions that actually reproduce the same failure.</h1>
+      <p class="hero-sub">Replay a stateful bug from fresh state, eliminate noise without reordering, and prove the fix stops the exact same failure.</p>
+      
+      <!-- Honest neutral workflow strip before execution -->
+      <div class="equation-strip" id="hero-strip">
+        <div class="equation-left">
+          <span class="equation-label" id="equation-caption">Trace verification workflow</span>
+          <div class="equation-flow" id="equation-display">
+            <span class="eq-item">Ready to verify this trace</span>
+            <span class="eq-arrow">·</span>
+            <span class="eq-item">Fresh-state replay</span>
+            <span class="eq-arrow">·</span>
+            <span class="eq-item">Exact failure identity</span>
+            <span class="eq-arrow">·</span>
+            <span class="eq-item">Fix verification</span>
+          </div>
+        </div>
+        <div class="equation-actions">
+          <button type="button" class="btn btn-primary" id="hero-analyze-btn">
+            <svg class="btn-icon" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+              <path d="M4 2.5l9 5.5-9 5.5v-11z"/>
+            </svg>
+            Analyze trace
+          </button>
+          <button type="button" class="btn btn-secondary" id="hero-reset-btn">Reset sample</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Workspace Grid -->
+    <main class="workspace-grid" id="workspace-main">
+      <!-- Zone 1: Trace Workspace (Left) -->
+      <section class="panel trace-panel" aria-labelledby="heading-trace">
+        <div class="panel-head">
+          <h2 class="panel-title" id="heading-trace"><span class="num">01 /</span> Trace workspace</h2>
+          <span class="badge badge-sample">Owned sample</span>
+        </div>
+
+        <!-- Dynamic Issue Context from /api/sample -->
+        <div class="sample-issue-card">
+          <div class="sample-issue-title" id="sample-title">Card changed during checkout retry</div>
+          <div class="sample-issue-text" id="sample-issue">Loading sample issue…</div>
+        </div>
+
+        <!-- View Switcher Tabs -->
+        <div class="view-tabs">
+          <div class="tab-nav" role="tablist" aria-label="Trace view mode">
+            <button type="button" class="tab-btn active" id="tab-timeline-btn" role="tab" aria-selected="true" aria-controls="view-timeline">
+              Readable timeline
+              <span class="tab-badge" id="timeline-count-badge">12</span>
+            </button>
+            <button type="button" class="tab-btn" id="tab-editor-btn" role="tab" aria-selected="false" aria-controls="view-editor">
+              JSON editor
+            </button>
+          </div>
+          <span class="editor-status-indicator" id="json-status">Valid JSON</span>
+        </div>
+
+        <!-- View 1: Readable Timeline -->
+        <div class="readable-timeline-view active" id="view-timeline" role="tabpanel" aria-labelledby="tab-timeline-btn">
+          <div class="timeline-row-list" id="timeline-rows"></div>
+        </div>
+
+        <!-- View 2: JSON Editor -->
+        <div class="editor-view" id="view-editor" role="tabpanel" aria-labelledby="tab-editor-btn">
+          <label for="trace-textarea" class="editor-label">Ordered actions · editable JSON</label>
+          <textarea id="trace-textarea" class="editor-textarea" spellcheck="false" aria-label="Action trace JSON"></textarea>
+          <div id="editor-error-msg" class="editor-error-banner" role="alert" style="display: none;">
+            <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true">
+              <path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 3.5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 018 4.5zm0 7a.9.9 0 110-1.8.9.9 0 010 1.8z"/>
+            </svg>
+            <span id="editor-error-text">JSON parse error</span>
+          </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="workspace-actions">
+          <button type="button" class="btn btn-primary" id="run-btn">
+            <svg class="btn-icon" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+              <path d="M4 2.5l9 5.5-9 5.5v-11z"/>
+            </svg>
+            Analyze trace
+          </button>
+          <button type="button" class="btn btn-secondary" id="reset-btn">Reset sample</button>
+          <span class="shortcut-hint">Ctrl + Enter to analyze</span>
+        </div>
+
+        <p class="scope-hint">
+          Dependent actions orphaned by a deletion are pruned; every candidate then runs from fresh state. An invalid trace or unrelated exception never counts as reproduction evidence.
+        </p>
+      </section>
+
+      <!-- Zone 2: Proof Workspace (Right) -->
+      <section class="panel proof-panel" aria-labelledby="heading-proof">
+        <div class="panel-head">
+          <h2 class="panel-title" id="heading-proof"><span class="num">02 /</span> Execution proof</h2>
+          <span class="phase-tag phase-ready" id="phase-badge">Ready</span>
+        </div>
+
+        <!-- Dynamic Result Container -->
+        <div id="result-container">
+          <!-- Initial Honest Ready State -->
+          <div class="ready-state">
+            <div class="ready-icon" aria-hidden="true">⌁</div>
+            <h3 class="ready-title">Ready to verify this trace</h3>
+            <p class="ready-desc">Analyze this stateful checkout sequence to determine whether it reproduces a failure, can be reduced to a smaller valid sequence, and whether the corrected implementation stops it.</p>
+            <div class="ready-preview-card">
+              <div class="ready-preview-header">Verification protocol</div>
+              <div class="ready-preview-equation">Every candidate replay starts from fresh state and must preserve the exact observed failure ID.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer & Scope note -->
+    <footer class="foot-note">
+      This result is locally reduced within a bounded search (≤40 actions, ≤250 checks). Every accepted candidate is replayed from fresh state and must preserve the exact observed failure ID. The sample uses synthetic data. IBM Bob IDE work and task screenshots are maintained in <code>bob_sessions/</code> as build workflow evidence; this interface does not claim a live Bob runtime integration.
+    </footer>
+  </div>
+
+  <!-- Accessible live region for screen readers -->
+  <div id="a11y-announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
+
+
