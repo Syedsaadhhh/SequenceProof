@@ -15,8 +15,7 @@ class Checkout:
     card: str = "card-A"
     cart: list[str] = field(default_factory=list)
     pending_card: str | None = None
-    charged_card: str | None = None
-    retry_count: int = 0
+    retry_attempts: list[dict[str, str]] = field(default_factory=list)
 
     def apply(self, step: dict[str, Any], fixed: bool = False) -> None:
         action = step["action"]
@@ -46,10 +45,11 @@ class Checkout:
         elif action == "retry_payment":
             if self.pending_card is None:
                 raise ValueError("retry needs a pending checkout")
-            self.retry_count += 1
             # Deliberate sample bug: the retry charges the card snapshotted at begin_checkout.
             # The corrected implementation uses the current card instead.
-            self.charged_card = self.card if fixed else self.pending_card
+            charged = self.card if fixed else self.pending_card
+            # Record every attempt as {expected: card active now, actual: card charged}.
+            self.retry_attempts.append({"expected": self.card, "actual": charged})
         else:
             raise ValueError("unsupported action")
 
@@ -75,17 +75,23 @@ def replay(trace: list[dict[str, Any]], fixed: bool = False) -> dict[str, Any]:
             state.apply(step, fixed=fixed)
         except ValueError as exc:
             return {"status": "INVALID_TRACE", "failure_id": None, "detail": str(exc), "at_step": i + 1, "events": events}
+        # For event logging, surface the most-recent attempt's charged card (None if none yet).
+        last_charged = state.retry_attempts[-1]["actual"] if state.retry_attempts else None
         events.append({"step": i + 1, "action": step["action"], "current_card": state.card,
-                       "pending_card": state.pending_card, "charged_card": state.charged_card})
-    if state.retry_count == 0:
+                       "pending_card": state.pending_card, "charged_card": last_charged})
+    if not state.retry_attempts:
         return {"status": "NOT_REPRODUCED", "failure_id": None, "detail": "No payment retry occurred", "events": events}
-    if state.charged_card != state.card:
-        return {"status": "REPRODUCED", "failure_id": "WRONG_CARD_CHARGED",
-                "detail": f"Expected {state.card}, charged {state.charged_card}",
-                "expected": state.card, "actual": state.charged_card, "events": events}
+    # Check every attempt: WRONG_CARD_CHARGED if any attempt charged a different card
+    # than the one active at that retry time.  Report the first mismatch found.
+    for attempt in state.retry_attempts:
+        if attempt["actual"] != attempt["expected"]:
+            return {"status": "REPRODUCED", "failure_id": "WRONG_CARD_CHARGED",
+                    "detail": f"Expected {attempt['expected']}, charged {attempt['actual']}",
+                    "expected": attempt["expected"], "actual": attempt["actual"], "events": events}
     return {"status": "NOT_REPRODUCED", "failure_id": None,
-            "detail": f"Charged the current card {state.card}", "expected": state.card,
-            "actual": state.charged_card, "events": events}
+            "detail": f"Charged the current card {state.retry_attempts[-1]['actual']}",
+            "expected": state.retry_attempts[-1]["expected"],
+            "actual": state.retry_attempts[-1]["actual"], "events": events}
 
 
 def prune_orphaned_steps(candidate: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], int]:
