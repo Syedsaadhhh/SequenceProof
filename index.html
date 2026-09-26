@@ -1,86 +1,2456 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SequenceProof — make a bug repeatable</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SequenceProof — Executable Stateful Debugging</title>
   <style>
-    :root{color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;background:#0c1118;color:#e8eef4}
-    *{box-sizing:border-box}body{margin:0}button,textarea{font:inherit}button{cursor:pointer}
-    .shell{max-width:1260px;margin:auto;padding:26px 28px 70px}.top{display:flex;justify-content:space-between;align-items:center;gap:20px;border-bottom:1px solid #263442;padding-bottom:19px}
-    .brand{font-weight:750;letter-spacing:-.04em;font-size:22px}.brand span{color:#85d9cb}.eyebrow{color:#8da5b6;font-size:12px;letter-spacing:.12em;text-transform:uppercase}
-    .pill{font-size:12px;border:1px solid #365046;background:#142b28;color:#a1e0c3;padding:7px 11px;border-radius:30px}
-    h1{font-size:clamp(31px,4vw,51px);line-height:1.08;letter-spacing:-.055em;margin:27px 0 12px;max-width:760px}
-    .sub{color:#a9b8c6;max-width:750px;line-height:1.6;margin:0 0 26px}
-    .grid{display:grid;grid-template-columns:minmax(340px,.86fr) minmax(400px,1.14fr);gap:18px;align-items:start}
-    .panel{background:#121b25;border:1px solid #2b3b49;border-radius:15px;padding:22px;box-shadow:0 16px 60px #0002}
-    .section-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:17px}.section-head h2{font-size:17px;margin:0;letter-spacing:-.025em}
-    .tag{font-size:11px;color:#9db2c2;border:1px solid #344654;border-radius:20px;padding:5px 9px}
-    .issue{border-left:3px solid #77cbb8;padding:7px 0 7px 14px;color:#d9e5ed;line-height:1.55;margin:0 0 20px}
-    label{color:#99b0bf;font-size:12px;display:block;margin:0 0 8px;text-transform:uppercase;letter-spacing:.07em}
-    textarea{width:100%;min-height:350px;resize:vertical;background:#0b131b;color:#d2e8e1;border:1px solid #354958;border-radius:10px;padding:15px;font:13px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;outline:none}
-    textarea:focus{border-color:#83d7c3;box-shadow:0 0 0 3px #83d7c321}.actions{display:flex;align-items:center;gap:10px;margin-top:15px;flex-wrap:wrap}
-    .primary{background:#9be2ce;color:#102920;border:0;border-radius:9px;font-weight:750;padding:12px 18px}.primary:hover{background:#b2f2dd}.primary:disabled{opacity:.55;cursor:wait}
-    .ghost{border:1px solid #40515d;background:transparent;color:#d7e5ef;border-radius:9px;padding:11px 14px}.ghost:hover{border-color:#9be2ce}
-    .hint{color:#8296a4;font-size:12px;line-height:1.45}.result-empty{min-height:490px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#94a8b7;padding:35px}
-    .result-empty .mark{font-size:42px;color:#81d4c2;margin-bottom:20px}.result-empty b{color:#e4edf3;font-size:20px;margin-bottom:9px}
-    .verdict{display:flex;justify-content:space-between;align-items:start;gap:14px;border-bottom:1px solid #2b3b49;padding-bottom:17px}
-    .status{display:inline-block;border-radius:6px;padding:5px 8px;background:#332824;color:#f4b59d;font-size:11px;letter-spacing:.09em;font-weight:700}
-    .status.ok{background:#17382f;color:#a2e6c7}.big{font-size:37px;letter-spacing:-.05em;font-weight:800;line-height:1.08;margin:11px 0 4px}.muted{color:#9ab0c0;line-height:1.5}
-    .metric{display:flex;gap:10px;align-items:baseline;color:#90a5b3;font-size:14px}.metric strong{color:#f0f7f9;font-size:33px}.arrow{color:#88dac4;font-size:22px}
-    .proof{background:#0d1720;border:1px solid #2c4450;border-radius:10px;padding:14px;margin:19px 0;color:#d5e8e4}
-    .proof strong{display:block;color:#f1f6f6;margin-bottom:6px}.proof .sample{font:13px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace}
-    .traces{display:grid;grid-template-columns:1fr 1fr;gap:12px}.trace{background:#0c141c;border:1px solid #283a48;border-radius:9px;padding:13px;min-width:0}
-    .trace h3{font-size:13px;color:#aabcc9;margin:0 0 12px}.step{display:flex;gap:9px;align-items:baseline;border-top:1px solid #22323e;padding:9px 0;font:12px/1.4 ui-monospace,Consolas,monospace;overflow-wrap:anywhere}
-    .step i{color:#698396;font-style:normal;min-width:17px}.step.drop{color:#7b8c99;text-decoration:line-through}.step.keep{color:#b8f0d9}
-    details{border-top:1px solid #2c3c49;margin-top:18px;padding-top:16px}summary{cursor:pointer;color:#bce8dc;font-weight:650}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#0a1219;border-radius:8px;padding:13px;color:#abc0cc;font-size:12px;max-height:250px;overflow:auto}
-    .foot{margin-top:22px;color:#8399a9;font-size:12px;line-height:1.55}
-    @media(max-width:850px){.shell{padding:18px 15px 45px}.grid{grid-template-columns:1fr}.traces{grid-template-columns:1fr}.panel{padding:17px}textarea{min-height:250px}.top .pill{display:none}}
+    :root {
+      --sp-bg-canvas: #080b10;
+      --sp-bg-surface: #0f141b;
+      --sp-bg-raised: #151c25;
+      --sp-bg-interactive: #1b2430;
+      --sp-bg-interactive-hover: #232e3d;
+
+      --sp-text-primary: #f3f6f8;
+      --sp-text-secondary: #a7b2bf;
+      --sp-text-muted: #8ba0b3;
+
+      --sp-accent: #67d4c1;
+      --sp-accent-strong: #48bda9;
+      --sp-accent-soft: rgba(103, 212, 193, 0.12);
+
+      --sp-failure: #f59e72;
+      --sp-failure-soft: rgba(245, 158, 114, 0.12);
+      --sp-success: #63d49c;
+      --sp-success-soft: rgba(99, 212, 156, 0.12);
+      --sp-warning: #f3c969;
+      --sp-warning-soft: rgba(243, 201, 105, 0.12);
+      --sp-error: #f47c7c;
+      --sp-error-soft: rgba(244, 124, 124, 0.12);
+
+      --sp-border: rgba(255, 255, 255, 0.08);
+      --sp-border-strong: rgba(255, 255, 255, 0.14);
+
+      --sp-radius-sm: 6px;
+      --sp-radius-md: 9px;
+      --sp-radius-lg: 14px;
+
+      --sp-font-sans: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      --sp-font-mono: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--sp-bg-canvas);
+      color: var(--sp-text-primary);
+      font-family: var(--sp-font-sans);
+      font-size: 14px;
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow-x: hidden;
+    }
+
+    /* Screen reader only utility */
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border-width: 0;
+    }
+
+    /* Focus visible standard */
+    :focus-visible {
+      outline: 2px solid var(--sp-accent);
+      outline-offset: 2px;
+    }
+
+    /* Outer application shell */
+    .shell {
+      max-width: 1380px;
+      margin: 0 auto;
+      padding: 0 24px 64px;
+    }
+
+    /* Top bar */
+    .top-bar {
+      min-height: 60px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      border-bottom: 1px solid var(--sp-border);
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .brand {
+      font-size: 20px;
+      font-weight: 750;
+      letter-spacing: -0.04em;
+      color: var(--sp-text-primary);
+      text-decoration: none;
+    }
+
+    .brand span {
+      color: var(--sp-accent);
+    }
+
+    .brand-descriptor {
+      font-size: 12px;
+      color: var(--sp-text-muted);
+      border-left: 1px solid var(--sp-border-strong);
+      padding-left: 14px;
+      letter-spacing: 0.02em;
+    }
+
+    .top-badges {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 9px;
+      border-radius: var(--sp-radius-sm);
+      letter-spacing: 0.03em;
+      white-space: nowrap;
+    }
+
+    .badge-sample {
+      background: var(--sp-bg-interactive);
+      color: var(--sp-text-secondary);
+      border: 1px solid var(--sp-border);
+    }
+
+    .badge-bounded {
+      background: rgba(103, 212, 193, 0.08);
+      color: var(--sp-accent);
+      border: 1px solid rgba(103, 212, 193, 0.25);
+    }
+
+    .badge-card {
+      background: rgba(245, 158, 114, 0.15);
+      color: var(--sp-failure);
+      border: 1px solid rgba(245, 158, 114, 0.35);
+      font-family: var(--sp-font-mono);
+      font-size: 11px;
+    }
+
+    .badge-item {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--sp-text-secondary);
+      border: 1px solid var(--sp-border);
+      font-family: var(--sp-font-mono);
+      font-size: 11px;
+    }
+
+    .badge-failure {
+      background: var(--sp-failure-soft);
+      color: var(--sp-failure);
+      border: 1px solid rgba(245, 158, 114, 0.35);
+      font-family: var(--sp-font-mono);
+      font-weight: 700;
+    }
+
+    .badge-success {
+      background: var(--sp-success-soft);
+      color: var(--sp-success);
+      border: 1px solid rgba(99, 212, 156, 0.35);
+    }
+
+    .badge-warning {
+      background: var(--sp-warning-soft);
+      color: var(--sp-warning);
+      border: 1px solid rgba(243, 201, 105, 0.35);
+    }
+
+    .badge-error {
+      background: var(--sp-error-soft);
+      color: var(--sp-error);
+      border: 1px solid rgba(244, 124, 124, 0.35);
+    }
+
+    .badge-neutral {
+      background: var(--sp-bg-interactive);
+      color: var(--sp-text-muted);
+      border: 1px solid var(--sp-border);
+    }
+
+    /* Hero Section */
+    .hero {
+      margin-bottom: 32px;
+    }
+
+    .hero-eyebrow {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--sp-accent);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .hero h1 {
+      font-size: clamp(26px, 3.6vw, 42px);
+      font-weight: 700;
+      line-height: 1.18;
+      letter-spacing: -0.04em;
+      color: var(--sp-text-primary);
+      max-width: 860px;
+      margin-bottom: 12px;
+    }
+
+    .hero-sub {
+      font-size: 14.5px;
+      color: var(--sp-text-secondary);
+      max-width: 760px;
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+
+    /* Compact equation / hero strip */
+    .equation-strip {
+      background: var(--sp-bg-surface);
+      border: 1px solid var(--sp-border);
+      border-radius: var(--sp-radius-md);
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .equation-left {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .equation-label {
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--sp-text-muted);
+    }
+
+    .equation-flow {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--sp-text-primary);
+      flex-wrap: wrap;
+    }
+
+    .equation-flow .eq-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      overflow-wrap: anywhere;
+    }
+
+    .equation-flow .eq-arrow {
+      color: var(--sp-text-muted);
+      font-weight: 400;
+    }
+
+    .equation-flow .eq-proof {
+      color: var(--sp-accent);
+      font-weight: 700;
+    }
+
+    .equation-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    /* Buttons & Interactive Elements */
+    button, input, textarea {
+      font: inherit;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 18px;
+      border-radius: var(--sp-radius-md);
+      font-size: 13px;
+      font-weight: 650;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: background-color 140ms ease, border-color 140ms ease, opacity 140ms ease;
+      white-space: nowrap;
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      background: var(--sp-accent);
+      color: #071714;
+      border-color: var(--sp-accent);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--sp-accent-strong);
+      border-color: var(--sp-accent-strong);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.55;
+      cursor: wait;
+    }
+
+    .btn-secondary {
+      background: var(--sp-bg-interactive);
+      color: var(--sp-text-primary);
+      border-color: var(--sp-border-strong);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: var(--sp-bg-interactive-hover);
+      border-color: var(--sp-accent);
+    }
+
+    .btn-secondary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-icon {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      stroke-width: 2;
+    }
+
+    /* Workspace Layout */
+    .workspace-grid {
+      display: grid;
+      grid-template-columns: minmax(360px, 42%) minmax(480px, 58%);
+      gap: 24px;
+      align-items: start;
+    }
+
+    .panel {
+      background: var(--sp-bg-surface);
+      border: 1px solid var(--sp-border);
+      border-radius: var(--sp-radius-lg);
+      padding: 22px;
+      min-width: 0;
+    }
+
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 18px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--sp-border);
+      flex-wrap: wrap;
+    }
+
+    .panel-title {
+      font-size: 15px;
+      font-weight: 650;
+      letter-spacing: -0.02em;
+      color: var(--sp-text-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .panel-title .num {
+      color: var(--sp-text-muted);
+      font-family: var(--sp-font-mono);
+      font-size: 12px;
+    }
+
+    /* Trace Workspace (Left) */
+    .sample-issue-card {
+      background: var(--sp-bg-raised);
+      border: 1px solid var(--sp-border);
+      border-left: 3px solid var(--sp-accent);
+      border-radius: var(--sp-radius-sm);
+      padding: 12px 14px;
+      margin-bottom: 18px;
+    }
+
+    .sample-issue-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--sp-text-primary);
+      margin-bottom: 4px;
+      letter-spacing: -0.01em;
+    }
+
+    .sample-issue-text {
+      font-size: 13px;
+      color: var(--sp-text-secondary);
+      line-height: 1.5;
+      overflow-wrap: anywhere;
+    }
+
+    /* Tabs for readable timeline vs json editor */
+    .view-tabs {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+
+    .tab-nav {
+      display: flex;
+      background: var(--sp-bg-canvas);
+      padding: 3px;
+      border-radius: var(--sp-radius-md);
+      border: 1px solid var(--sp-border);
+      gap: 2px;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: 0;
+      color: var(--sp-text-muted);
+      padding: 6px 12px;
+      border-radius: var(--sp-radius-sm);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: color 120ms ease, background-color 120ms ease;
+    }
+
+    .tab-btn:hover {
+      color: var(--sp-text-primary);
+    }
+
+    .tab-btn.active {
+      background: var(--sp-bg-raised);
+      color: var(--sp-text-primary);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+
+    .tab-badge {
+      font-family: var(--sp-font-mono);
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 10px;
+      background: var(--sp-bg-interactive);
+      color: var(--sp-text-secondary);
+    }
+
+    .editor-status-indicator {
+      font-size: 11px;
+      font-family: var(--sp-font-mono);
+      color: var(--sp-text-muted);
+    }
+
+    .editor-status-indicator.err {
+      color: var(--sp-error);
+    }
+
+    /* Readable Timeline */
+    .readable-timeline-view {
+      max-height: 380px;
+      overflow-y: auto;
+      border: 1px solid var(--sp-border);
+      border-radius: var(--sp-radius-md);
+      background: var(--sp-bg-canvas);
+      padding: 4px;
+    }
+
+    .timeline-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 9px 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      font-size: 12px;
+    }
+
+    .timeline-row:last-child {
+      border-bottom: none;
+    }
+
+    .timeline-step-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .timeline-idx {
+      font-family: var(--sp-font-mono);
+      font-size: 11px;
+      color: var(--sp-text-muted);
+      min-width: 20px;
+    }
+
+    .timeline-label {
+      color: var(--sp-text-primary);
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* JSON Editor View */
+    .editor-view {
+      display: none;
+    }
+
+    .editor-view.active {
+      display: block;
+    }
+
+    .readable-timeline-view.active {
+      display: block;
+    }
+
+    .readable-timeline-view:not(.active) {
+      display: none;
+    }
+
+    .editor-label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--sp-text-muted);
+      margin-bottom: 8px;
+    }
+
+    .editor-textarea {
+      width: 100%;
+      min-height: 340px;
+      background: var(--sp-bg-canvas);
+      color: #d8e5ef;
+      border: 1px solid var(--sp-border-strong);
+      border-radius: var(--sp-radius-md);
+      padding: 14px;
+      font-family: var(--sp-font-mono);
+      font-size: 12.5px;
+      line-height: 1.5;
+      resize: vertical;
+      outline: none;
+      tab-size: 2;
+    }
+
+    .editor-textarea:focus {
+      border-color: var(--sp-accent);
+      box-shadow: 0 0 0 2px var(--sp-accent-soft);
+    }
+
+    .editor-textarea[aria-invalid="true"] {
+      border-color: var(--sp-error);
+      box-shadow: 0 0 0 2px var(--sp-error-soft);
+    }
+
+    .editor-error-banner {
+      margin-top: 8px;
+      padding: 8px 12px;
+      border-radius: var(--sp-radius-sm);
+      background: var(--sp-error-soft);
+      border: 1px solid rgba(244, 124, 124, 0.35);
+      color: var(--sp-error);
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-wrap: anywhere;
+    }
+
+    .workspace-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 18px;
+      flex-wrap: wrap;
+    }
+
+    .shortcut-hint {
+      font-size: 11.5px;
+      color: var(--sp-text-muted);
+      margin-left: auto;
+    }
+
+    .scope-hint {
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px solid var(--sp-border);
+      font-size: 12px;
+      color: var(--sp-text-muted);
+      line-height: 1.5;
+    }
+
+    /* Proof Workspace (Right) */
+    .phase-tag {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: var(--sp-radius-sm);
+      font-family: var(--sp-font-mono);
+    }
+
+    .phase-ready {
+      background: var(--sp-bg-interactive);
+      color: var(--sp-text-secondary);
+      border: 1px solid var(--sp-border);
+    }
+
+    .phase-analyzing {
+      background: rgba(103, 212, 193, 0.12);
+      color: var(--sp-accent);
+      border: 1px solid rgba(103, 212, 193, 0.3);
+    }
+
+    .phase-verified {
+      background: var(--sp-accent-soft);
+      color: var(--sp-accent);
+      border: 1px solid rgba(103, 212, 193, 0.4);
+    }
+
+    .phase-neutral {
+      background: var(--sp-bg-interactive);
+      color: var(--sp-text-muted);
+      border: 1px solid var(--sp-border);
+    }
+
+    .phase-warning {
+      background: var(--sp-warning-soft);
+      color: var(--sp-warning);
+      border: 1px solid rgba(243, 201, 105, 0.35);
+    }
+
+    .phase-error {
+      background: var(--sp-error-soft);
+      color: var(--sp-error);
+      border: 1px solid rgba(244, 124, 124, 0.35);
+    }
+
+    /* Empty / Ready State */
+    .ready-state {
+      min-height: 460px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 36px 20px;
+      color: var(--sp-text-secondary);
+    }
+
+    .ready-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--sp-bg-interactive);
+      border: 1px solid var(--sp-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--sp-accent);
+      margin-bottom: 16px;
+      font-size: 20px;
+    }
+
+    .ready-title {
+      font-size: 17px;
+      font-weight: 650;
+      color: var(--sp-text-primary);
+      margin-bottom: 8px;
+      letter-spacing: -0.02em;
+    }
+
+    .ready-desc {
+      font-size: 13.5px;
+      color: var(--sp-text-secondary);
+      max-width: 440px;
+      line-height: 1.55;
+      margin-bottom: 20px;
+    }
+
+    .ready-preview-card {
+      background: var(--sp-bg-canvas);
+      border: 1px solid var(--sp-border);
+      border-radius: var(--sp-radius-md);
+      padding: 12px 16px;
+      max-width: 440px;
+      width: 100%;
+      text-align: left;
+    }
+
+    .ready-preview-header {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: var(--sp-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 6px;
+    }
+
+    .ready-preview-equation {
+      font-size: 12px;
+      color: var(--sp-text-primary);
+      line-height: 1.45;
+    }
+
+    /* Honest Pending / Analyzing State */
+    .pending-panel {
+      min-height: 460px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .pending-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+
+    .pending-spinner {
+      width: 22px;
+      height: 22px;
+      border: 2px solid rgba(103, 212, 193, 0.2);
+      border-top-color: var(--sp-accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .pending-title {
+      font-size: 16px;
+      font-weight: 650;
+      color: var(--sp-text-primary);
+    }
+
+    .pending-subtitle {
+      font-size: 12px;
+      color: var(--sp-text-muted);
+    }
+
+    .pending-stages-card {
+      background: var(--sp-bg-canvas);
+      border: 1px solid var(--sp-border);
+      border-radius: var(--sp-radius-md);
+      padding: 16px;
+      margin-bottom: 18px;
+    }
+
+    .pending-stages-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--sp-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 10px;
+    }
+
+    .pending-stage-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 12.5px;
+      color: var(--sp-text-secondary);
+    }
+
+    .pending-stage-item {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+
+    .pending-stage-bullet {
+      color: var(--sp-accent);
+      font-family: var(--sp-font-mono);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .pending-note {
+      font-size: 11.5px;
+      color: var(--sp-text-muted);
+      line-height: 1.45;
+    }
+
+    /* Verified Result View */
+    .result-view {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      outline: none;
+    }
+
+    .result-hero {
+      background: var(--sp-bg-raised);
+      border: 1px solid var(--sp-border-strong);
+      border-radius: var(--sp-radius-lg);
+      padding: 22px;
+    }
+
+    .result-hero-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+
+    .equation-large {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      font-size: clamp(26px, 3.8vw, 40px);
+      font-weight: 760;
+      letter-spacing: -0.05em;
+      line-height: 1.1;
+      color: var(--sp-text-primary);
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+
+    .equation-large .arrow {
+      color: var(--sp-accent);
+      font-weight: 500;
+    }
+
+    .equation-large .steps-reduced {
+      color: var(--sp-accent);
+    }
+
+    .reduction-pill {
+      display: inline-flex;
+      align-items: center;
+      background: var(--sp-accent-soft);
+      color: var(--sp-accent);
+      border: 1px solid rgba(103, 212, 193, 0.3);
+      padding: 3px 8px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .result-hero-badges {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .result-hero-meta {
+      font-size: 12px;
+      color: var(--sp-text-muted);
+      margin-top: 10px;
+      line-height: 1.5;
+    }
+
+    /* Failure Moment Card */
+    .failure-moment-card {
+      background: var(--sp-bg-canvas);
+      border: 1px solid rgba(245, 158, 114, 0.25);
+      border-radius: var(--sp-radius-md);
+      padding: 16px;
+    }
+
+    .failure-moment-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+
+    .failure-moment-title {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--sp-failure);
+    }
+
+    .failure-moment-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .failure-col {
+      background: var(--sp-bg-surface);
+      border: 1px solid var(--sp-border);
+      border-radius: var(--sp-radius-sm);
+      padding: 10px 12px;
+    }
+
+    .failure-label {
+      display: block;
+      font-size: 11px;
+      color: var(--sp-text-muted);
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .failure-val {
+      font-family: var(--sp-font-mono);
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--sp-text-primary);
+    }
+
+    .failure-val.actual {
+      color: var(--sp-failure);
+    }
+
+    .failure-val.expected {
+      color: var(--sp-text-primary);
+    }
+
+    .failure-moment-detail {
+      font-family: var(--sp-font-mono);
+      font-size: 12px;
+      color: var(--sp-text-secondary);
+      margin-bottom: 8px;
+      overflow-wrap: anywhere;
+    }
+
+    .failure-moment-oracle-note {
+      font-size: 11.5px;
+      color: var(--sp-text-muted);
+      line-height: 1.45;
+    }
+
+    /* Confirmation Strip */
+    .confirmation-section {
+      background: var(--sp-bg-canvas);
+      border: 1px solid var(--sp-border);
+      border-radius: var(--sp-radius-md);
+      padding: 14px 16px;
+    }
+
+    .confirmation-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .confirmation-title {
+      font-size: 12px;
+      font-weight: 650;
+      color: var(--sp-text-primary);
+    }
+
+    .confirmation-count {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--sp-accent);
+      font-family: var(--sp-font-mono);
+    }
+
+    .trial-strip {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .trial-cell {
+      flex: 1;
+      min-width: 68px;
+      background: var(--sp-bg-surface);
+      border: 1px solid var(--sp-border);
+      border-radius: var(--sp-radius-sm);
+      padding: 6px 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-family: var(--sp-font-mono);
+      font-size: 11px;
+    }
+
+    .trial-cell.trial-pass {
+      border-color: rgba(103, 212, 193, 0.4);
+      background: rgba(103, 212, 193, 0.08);
+      color: var(--sp-accent);
+    }
+
+    .trial-cell.trial-fail {
+      border-color: rgba(244, 124, 124, 0.4);
+      background: rgba(244, 124, 124, 0.08);
+      color: var(--sp-error);
+    }
+
+    /* Corrected Behavior Callout */
+    .status-callout {
+      border-radius: var(--sp-radius-md);
+      padding: 12px 14px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .callout-success {
+      background: rgba(99, 212, 156, 0.08);
+      border: 1px solid rgba(99, 212, 156, 0.25);
+      color: #92eec4;
+    }
+
+    .callout-warning {
+      background: rgba(243, 201, 105, 0.08);
+      border: 1px solid rgba(243, 201, 105, 0.25);
+      color: #f7d686;
+    }
+
+    .callout-icon {
+      font-weight: 700;
+      font-size: 14px;
+      margin-top: 1px;
+      flex-shrink: 0;
+    }
+
+    .callout-desc {
+      font-size: 12px;
+      color: var(--sp-text-secondary);
+      margin-top: 3px;
+      overflow-wrap: anywhere;
+    }
+
+    /* Comparison Section */
+    .traces-comparison {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .comparison-col {
+      background: var(--sp-bg-canvas);
+      border: 1px solid var(--sp-border);
+      border-radius: var(--sp-radius-md);
+      padding: 14px;
+      min-width: 0;
+    }
+
+    .col-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--sp-border);
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .col-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--sp-text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .step-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .step-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 7px 9px;
+      border-radius: var(--sp-radius-sm);
+      font-size: 12px;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
+    .step-item-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .step-item-idx {
+      font-family: var(--sp-font-mono);
+      font-size: 11px;
+      min-width: 18px;
+      color: var(--sp-text-muted);
+      flex-shrink: 0;
+    }
+
+    .step-item-text {
+      overflow-wrap: anywhere;
+    }
+
+    /* Original timeline items */
+    .step-item.step-pruned {
+      color: var(--sp-text-muted);
+      text-decoration: line-through;
+      opacity: 0.65;
+    }
+
+    .step-item.step-retained-orig {
+      color: var(--sp-text-primary);
+      background: rgba(103, 212, 193, 0.06);
+      border-left: 2px solid var(--sp-accent);
+      font-weight: 600;
+    }
+
+    .step-item.step-neutral {
+      color: var(--sp-text-primary);
+    }
+
+    /* Reduced timeline items */
+    .step-item.step-proof {
+      background: rgba(103, 212, 193, 0.1);
+      border: 1px solid rgba(103, 212, 193, 0.25);
+      color: #bbf3e7;
+      font-weight: 600;
+    }
+
+    .step-item.step-proof .step-item-idx {
+      color: var(--sp-accent);
+    }
+
+    .comparison-footnote {
+      font-size: 11px;
+      color: var(--sp-text-muted);
+      margin-top: 8px;
+      line-height: 1.45;
+    }
+
+    .comparison-ambiguity-note {
+      font-size: 11.5px;
+      color: var(--sp-warning);
+      background: rgba(243, 201, 105, 0.06);
+      border: 1px solid rgba(243, 201, 105, 0.2);
+      border-radius: var(--sp-radius-sm);
+      padding: 8px 10px;
+      margin-top: 10px;
+      line-height: 1.4;
+    }
+
+    /* Proof Drawer (<details>) */
+    .proof-drawer {
+      background: var(--sp-bg-canvas);
+      border: 1px solid var(--sp-border);
+      border-radius: var(--sp-radius-md);
+      overflow: hidden;
+      transition: border-color 140ms ease;
+    }
+
+    .proof-drawer:hover {
+      border-color: var(--sp-border-strong);
+    }
+
+    .proof-drawer summary {
+      padding: 14px 18px;
+      font-size: 13px;
+      font-weight: 650;
+      color: var(--sp-text-primary);
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      user-select: none;
+      list-style: none;
+    }
+
+    .proof-drawer summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .drawer-arrow {
+      font-size: 10px;
+      color: var(--sp-text-muted);
+      transition: transform 160ms ease;
+    }
+
+    .proof-drawer[open] .drawer-arrow {
+      transform: rotate(180deg);
+    }
+
+    .drawer-content {
+      padding: 0 18px 18px;
+      border-top: 1px solid var(--sp-border);
+    }
+
+    .drawer-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 10px;
+      margin: 14px 0;
+    }
+
+    .stat-card {
+      background: var(--sp-bg-surface);
+      border: 1px solid var(--sp-border);
+      border-radius: var(--sp-radius-sm);
+      padding: 8px 12px;
+    }
+
+    .stat-label {
+      display: block;
+      font-size: 10.5px;
+      text-transform: uppercase;
+      color: var(--sp-text-muted);
+      letter-spacing: 0.05em;
+      margin-bottom: 2px;
+    }
+
+    .stat-val {
+      font-family: var(--sp-font-mono);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--sp-text-primary);
+      overflow-wrap: anywhere;
+    }
+
+    .drawer-subhead {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--sp-text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin: 16px 0 8px;
+    }
+
+    .events-table-wrap {
+      max-height: 220px;
+      overflow-y: auto;
+      overflow-x: auto;
+      border: 1px solid var(--sp-border);
+      border-radius: var(--sp-radius-sm);
+      margin-bottom: 16px;
+    }
+
+    .events-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11.5px;
+      font-family: var(--sp-font-mono);
+      text-align: left;
+      min-width: 440px;
+    }
+
+    .events-table th {
+      background: var(--sp-bg-raised);
+      color: var(--sp-text-muted);
+      font-weight: 600;
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--sp-border);
+      position: sticky;
+      top: 0;
+    }
+
+    .events-table td {
+      padding: 6px 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+      color: var(--sp-text-secondary);
+    }
+
+    .events-table tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .events-table td.cell-diff {
+      color: var(--sp-failure);
+      font-weight: 700;
+    }
+
+    .drawer-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+
+    .drawer-hint {
+      font-size: 11.5px;
+      color: var(--sp-text-muted);
+    }
+
+    .scope-note {
+      font-size: 11.5px;
+      color: var(--sp-text-muted);
+      line-height: 1.5;
+      padding-top: 14px;
+      margin-top: 14px;
+      border-top: 1px solid var(--sp-border);
+    }
+
+    /* Negative States */
+    .negative-card {
+      background: var(--sp-bg-surface);
+      border: 1px solid var(--sp-border);
+      border-radius: var(--sp-radius-lg);
+      padding: 24px;
+    }
+
+    .negative-card.state-invalid {
+      border-color: rgba(244, 124, 124, 0.35);
+      background: rgba(244, 124, 124, 0.04);
+    }
+
+    .negative-card.state-not-reproduced {
+      border-color: rgba(255, 255, 255, 0.1);
+      background: var(--sp-bg-surface);
+    }
+
+    .negative-card.state-flaky {
+      border-color: rgba(243, 201, 105, 0.35);
+      background: rgba(243, 201, 105, 0.04);
+    }
+
+    .negative-card.state-error {
+      border-color: rgba(244, 124, 124, 0.4);
+      background: rgba(244, 124, 124, 0.05);
+    }
+
+    .negative-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+
+    .negative-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--sp-text-primary);
+    }
+
+    .negative-detail {
+      font-family: var(--sp-font-mono);
+      font-size: 13px;
+      color: #e5edf5;
+      background: var(--sp-bg-canvas);
+      padding: 10px 14px;
+      border-radius: var(--sp-radius-sm);
+      border: 1px solid var(--sp-border);
+      margin-bottom: 14px;
+      overflow-wrap: anywhere;
+    }
+
+    .negative-explanation {
+      font-size: 13px;
+      color: var(--sp-text-secondary);
+      line-height: 1.55;
+      margin-bottom: 18px;
+    }
+
+    .negative-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    /* Footer */
+    .foot-note {
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid var(--sp-border);
+      font-size: 12px;
+      color: var(--sp-text-muted);
+      line-height: 1.6;
+    }
+
+    /* Responsive Behavior */
+    @media (max-width: 1024px) {
+      .workspace-grid {
+        grid-template-columns: 1fr;
+      }
+      .panel {
+        padding: 18px;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .shell {
+        padding: 0 16px 40px;
+      }
+      .top-bar {
+        padding: 14px 0;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+      }
+      .brand-descriptor {
+        border-left: none;
+        padding-left: 0;
+        display: block;
+        width: 100%;
+      }
+      .equation-strip {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .equation-actions {
+        width: 100%;
+        margin-top: 8px;
+      }
+      .btn {
+        min-height: 44px;
+      }
+      .equation-actions .btn {
+        flex: 1;
+        min-height: 44px;
+      }
+      .tab-btn {
+        min-height: 44px;
+      }
+      .workspace-actions .btn {
+        min-height: 44px;
+      }
+      .negative-actions .btn {
+        min-height: 44px;
+      }
+      .traces-comparison {
+        grid-template-columns: 1fr;
+      }
+      .failure-moment-grid {
+        grid-template-columns: 1fr;
+      }
+      .editor-textarea {
+        min-height: 240px;
+      }
+    }
+
+    /* Small mobile (e.g. 320px) */
+    @media (max-width: 360px) {
+      .shell {
+        padding: 0 12px 30px;
+      }
+      .panel {
+        padding: 14px;
+      }
+      .btn {
+        padding: 10px 12px;
+        font-size: 12px;
+      }
+    }
+
+    /* Reduced Motion */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        transition-duration: 0.001ms !important;
+      }
+    }
   </style>
 </head>
-<body><div class="shell">
-  <div class="top"><div class="brand">Sequence<span>Proof</span></div><div class="pill">Executable debugging · sample project</div></div>
-  <div class="eyebrow" style="margin-top:26px">From report to reproduction</div>
-  <h1>Find the few steps that actually break it.</h1>
-  <p class="sub">Replay a stateful bug, remove the noise, and prove that the same failure still occurs. The result is a case another developer can run.</p>
-  <main class="grid">
-    <section class="panel"><div class="section-head"><h2>01 / Bug case</h2><span class="tag">Owned sample</span></div>
-      <p class="issue" id="issue">Loading sample…</p><label for="trace">Ordered actions · editable JSON</label>
-      <textarea id="trace" spellcheck="false" aria-label="Action trace JSON"></textarea>
-      <div class="actions"><button class="primary" id="run">Run and reduce →</button><button class="ghost" id="reset">Reset sample</button></div>
-      <p class="hint">Dependent actions orphaned by a deletion are pruned; every candidate then runs from fresh state. An invalid trace or unrelated exception never counts as the reported bug.</p>
-    </section>
-    <section class="panel" aria-live="polite"><div class="section-head"><h2>02 / Verified result</h2><span class="tag" id="phase">Ready</span></div><div id="result" class="result-empty"><div class="mark">⌁</div><b>One run turns a report into evidence.</b><div>Load the sample trace, then run it to see the observed failure and the steps that matter.</div></div></section>
-  </main>
-  <p class="foot">This prototype operates on an owned sample service. IBM Bob IDE work and its task screenshots must be added by the team in the same repository; this page does not claim a direct Bob API integration.</p>
-</div><script>
-const traceEl=document.getElementById('trace'), resultEl=document.getElementById('result'), phase=document.getElementById('phase');
-let sample;
-const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const stepText=x=>x.action+(x.item?' · '+x.item:'')+(x.card?' · '+x.card:'');
-async function load(){const r=await fetch('/api/sample'); sample=await r.json();traceEl.value=JSON.stringify(sample.trace,null,2);document.getElementById('issue').textContent=sample.issue;phase.textContent='Ready';}
-document.getElementById('reset').onclick=()=>{if(sample){traceEl.value=JSON.stringify(sample.trace,null,2);resultEl.className='result-empty';resultEl.innerHTML='<div class="mark">⌁</div><b>Sample reset.</b><div>Run the trace to see a fresh result.</div>';phase.textContent='Ready'}};
-document.getElementById('run').onclick=async()=>{
-  const button=document.getElementById('run');button.disabled=true;phase.textContent='Running';resultEl.className='result-empty';resultEl.textContent='Replaying, reducing, and checking five fresh trials…';
-  try{
-    const trace=JSON.parse(traceEl.value);const r=await fetch('/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({trace})});
-    const data=await r.json();if(!r.ok)throw Error(data.error||'Run failed');render(data);
-  }catch(err){phase.textContent='Input error';resultEl.className='result-empty';resultEl.innerHTML='<b>Could not run this trace</b><div>'+esc(err.message)+'</div>'}
-  finally{button.disabled=false}
-};
-function render(d){
-  phase.textContent=d.status;
-  if(d.status!=='REPRODUCED'){
-    resultEl.className='';resultEl.innerHTML='<div class="verdict"><div><span class="status">'+esc(d.status)+'</span><div class="big">No verified reduction</div><div class="muted">'+esc(d.original.detail)+'</div></div></div><div class="proof"><strong>Observed result</strong>'+esc(d.original.status)+' · '+esc(d.original.detail)+'</div><p class="muted">The runner will not label an invalid or passing trace as a reproduction.</p>';return;
-  }
-  const original=d.original_steps,reduced=d.reduced_steps,kept=new Set();let j=0;original.forEach((x,i)=>{if(j<reduced.length&&JSON.stringify(x)===JSON.stringify(reduced[j])){kept.add(i);j++}});
-  const list=(arr,originalSide=false)=>arr.map((x,i)=>'<div class="step '+(originalSide?(kept.has(i)?'':'drop'):'keep')+'"><i>'+String(i+1).padStart(2,'0')+'</i><span>'+esc(stepText(x))+'</span></div>').join('');
-  const detail=d.original.detail, count=d.trials.filter(x=>x.failure_id===d.failure_id).length;
-  resultEl.className='';resultEl.innerHTML='<div class="verdict"><div><span class="status ok">SAME FAILURE VERIFIED</span><div class="big">'+original.length+' actions → '+reduced.length+'</div><div class="muted">'+count+'/'+d.trials.length+' fresh runs reproduced '+esc(d.failure_id)+'</div></div><div class="metric"><strong>'+Math.round(100*(1-reduced.length/original.length))+'%</strong> fewer steps</div></div>'+
-    '<div class="proof"><strong>What broke</strong><div class="sample">'+esc(detail)+'</div><div class="muted">After the corrected retry logic: '+esc(d.fixed_result.detail)+' · '+(d.fixed_passes?'target assertion passes':'needs review')+'</div></div>'+
-    '<div class="traces"><div class="trace"><h3>Original trace · '+original.length+' steps</h3>'+list(original,true)+'</div><div class="trace"><h3>Reduced trace · '+reduced.length+' steps</h3>'+list(reduced)+'</div></div>'+
-    '<div class="actions"><button class="ghost" id="download">Download proof JSON</button><span class="hint">'+esc(d.attempts)+' candidate checks · '+esc(d.orphan_steps_pruned)+' orphan steps pruned · '+esc(d.duration_ms)+' ms on this sample</span></div>'+
-    '<details><summary>Inspect the execution proof</summary><pre>'+esc(JSON.stringify({failure_id:d.failure_id,trial_outcomes:d.trials,fixed_result:d.fixed_result,events:d.original.events},null,2))+'</pre></details>';
-  document.getElementById('download').onclick=()=>{const b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='sequenceproof-evidence.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
-}
-load().catch(e=>{document.getElementById('issue').textContent='Sample unavailable: '+e.message});
-</script></body></html>
+<body>
+  <div class="shell">
+    <!-- Top bar -->
+    <header class="top-bar">
+      <div class="brand-wrap">
+        <a href="/" class="brand">Sequence<span>Proof</span></a>
+        <span class="brand-descriptor">Executable stateful debugging</span>
+      </div>
+      <div class="top-badges">
+        <span class="badge badge-sample">Synthetic sample</span>
+        <span class="badge badge-bounded" title="Analysis bounds: ≤40 actions, ≤250 candidate checks, ≤32 KiB">Bounded analysis</span>
+      </div>
+    </header>
+
+    <!-- Hero -->
+    <div class="hero">
+      <div class="hero-eyebrow">From noisy trace to executable proof</div>
+      <h1>Find the few actions that actually reproduce the same failure.</h1>
+      <p class="hero-sub">Replay a stateful bug from fresh state, eliminate noise without reordering, and prove the fix stops the exact same failure.</p>
+      
+      <!-- Honest neutral workflow strip before execution -->
+      <div class="equation-strip" id="hero-strip">
+        <div class="equation-left">
+          <span class="equation-label" id="equation-caption">Trace verification workflow</span>
+          <div class="equation-flow" id="equation-display">
+            <span class="eq-item">Ready to verify this trace</span>
+            <span class="eq-arrow">·</span>
+            <span class="eq-item">Fresh-state replay</span>
+            <span class="eq-arrow">·</span>
+            <span class="eq-item">Exact failure identity</span>
+            <span class="eq-arrow">·</span>
+            <span class="eq-item">Fix verification</span>
+          </div>
+        </div>
+        <div class="equation-actions">
+          <button type="button" class="btn btn-primary" id="hero-analyze-btn">
+            <svg class="btn-icon" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+              <path d="M4 2.5l9 5.5-9 5.5v-11z"/>
+            </svg>
+            Analyze trace
+          </button>
+          <button type="button" class="btn btn-secondary" id="hero-reset-btn">Reset sample</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Workspace Grid -->
+    <main class="workspace-grid" id="workspace-main">
+      <!-- Zone 1: Trace Workspace (Left) -->
+      <section class="panel trace-panel" aria-labelledby="heading-trace">
+        <div class="panel-head">
+          <h2 class="panel-title" id="heading-trace"><span class="num">01 /</span> Trace workspace</h2>
+          <span class="badge badge-sample">Owned sample</span>
+        </div>
+
+        <!-- Dynamic Issue Context from /api/sample -->
+        <div class="sample-issue-card">
+          <div class="sample-issue-title" id="sample-title">Card changed during checkout retry</div>
+          <div class="sample-issue-text" id="sample-issue">Loading sample issue…</div>
+        </div>
+
+        <!-- View Switcher Tabs -->
+        <div class="view-tabs">
+          <div class="tab-nav" role="tablist" aria-label="Trace view mode">
+            <button type="button" class="tab-btn active" id="tab-timeline-btn" role="tab" aria-selected="true" aria-controls="view-timeline">
+              Readable timeline
+              <span class="tab-badge" id="timeline-count-badge">12</span>
+            </button>
+            <button type="button" class="tab-btn" id="tab-editor-btn" role="tab" aria-selected="false" aria-controls="view-editor">
+              JSON editor
+            </button>
+          </div>
+          <span class="editor-status-indicator" id="json-status">Valid JSON</span>
+        </div>
+
+        <!-- View 1: Readable Timeline -->
+        <div class="readable-timeline-view active" id="view-timeline" role="tabpanel" aria-labelledby="tab-timeline-btn">
+          <div class="timeline-row-list" id="timeline-rows"></div>
+        </div>
+
+        <!-- View 2: JSON Editor -->
+        <div class="editor-view" id="view-editor" role="tabpanel" aria-labelledby="tab-editor-btn">
+          <label for="trace-textarea" class="editor-label">Ordered actions · editable JSON</label>
+          <textarea id="trace-textarea" class="editor-textarea" spellcheck="false" aria-label="Action trace JSON"></textarea>
+          <div id="editor-error-msg" class="editor-error-banner" role="alert" style="display: none;">
+            <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true">
+              <path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 3.5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 018 4.5zm0 7a.9.9 0 110-1.8.9.9 0 010 1.8z"/>
+            </svg>
+            <span id="editor-error-text">JSON parse error</span>
+          </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="workspace-actions">
+          <button type="button" class="btn btn-primary" id="run-btn">
+            <svg class="btn-icon" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+              <path d="M4 2.5l9 5.5-9 5.5v-11z"/>
+            </svg>
+            Analyze trace
+          </button>
+          <button type="button" class="btn btn-secondary" id="reset-btn">Reset sample</button>
+          <span class="shortcut-hint">Ctrl + Enter to analyze</span>
+        </div>
+
+        <p class="scope-hint">
+          Dependent actions orphaned by a deletion are pruned; every candidate then runs from fresh state. An invalid trace or unrelated exception never counts as reproduction evidence.
+        </p>
+      </section>
+
+      <!-- Zone 2: Proof Workspace (Right) -->
+      <section class="panel proof-panel" aria-labelledby="heading-proof">
+        <div class="panel-head">
+          <h2 class="panel-title" id="heading-proof"><span class="num">02 /</span> Execution proof</h2>
+          <span class="phase-tag phase-ready" id="phase-badge">Ready</span>
+        </div>
+
+        <!-- Dynamic Result Container -->
+        <div id="result-container">
+          <!-- Initial Honest Ready State -->
+          <div class="ready-state">
+            <div class="ready-icon" aria-hidden="true">⌁</div>
+            <h3 class="ready-title">Ready to verify this trace</h3>
+            <p class="ready-desc">Analyze this stateful checkout sequence to determine whether it reproduces a failure, can be reduced to a smaller valid sequence, and whether the corrected implementation stops it.</p>
+            <div class="ready-preview-card">
+              <div class="ready-preview-header">Verification protocol</div>
+              <div class="ready-preview-equation">Every candidate replay starts from fresh state and must preserve the exact observed failure ID.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer & Scope note -->
+    <footer class="foot-note">
+      This result is locally reduced within a bounded search (≤40 actions, ≤250 checks). Every accepted candidate is replayed from fresh state and must preserve the exact observed failure ID. The sample uses synthetic data. IBM Bob IDE work and task screenshots are maintained in <code>bob_sessions/</code> as build workflow evidence; this interface does not claim a live Bob runtime integration.
+    </footer>
+  </div>
+
+  <!-- Accessible live region for screen readers -->
+  <div id="a11y-announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+
+  <script>
+    // State management
+    let sampleData = null;
+    let lastApiResponse = null;
+    let isAnalyzing = false;
+
+    // DOM Elements
+    const traceTextarea = document.getElementById('trace-textarea');
+    const timelineRowsEl = document.getElementById('timeline-rows');
+    const timelineCountBadge = document.getElementById('timeline-count-badge');
+    const jsonStatusEl = document.getElementById('json-status');
+    const editorErrorMsg = document.getElementById('editor-error-msg');
+    const editorErrorText = document.getElementById('editor-error-text');
+    const tabTimelineBtn = document.getElementById('tab-timeline-btn');
+    const tabEditorBtn = document.getElementById('tab-editor-btn');
+    const viewTimeline = document.getElementById('view-timeline');
+    const viewEditor = document.getElementById('view-editor');
+    const runBtn = document.getElementById('run-btn');
+    const resetBtn = document.getElementById('reset-btn');
+    const heroAnalyzeBtn = document.getElementById('hero-analyze-btn');
+    const heroResetBtn = document.getElementById('hero-reset-btn');
+    const phaseBadge = document.getElementById('phase-badge');
+    const resultContainer = document.getElementById('result-container');
+    const sampleTitleEl = document.getElementById('sample-title');
+    const sampleIssueEl = document.getElementById('sample-issue');
+    const heroStripCaption = document.getElementById('equation-caption');
+    const heroStripDisplay = document.getElementById('equation-display');
+    const workspaceMain = document.getElementById('workspace-main');
+    const announcer = document.getElementById('a11y-announcer');
+
+    // Utility: HTML Escaper
+    function esc(s) {
+      if (s === null || s === undefined) return '';
+      return String(s).replace(/[&<>"']/g, c => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[c]));
+    }
+
+    // Utility: Action formatting
+    function formatActionText(step) {
+      if (!step || typeof step !== 'object') return 'Invalid step';
+      const action = step.action || '';
+      switch (action) {
+        case 'view_catalog': return 'View catalog';
+        case 'add_item': return `Add item · ${step.item || 'item'}`;
+        case 'remove_item': return `Remove item · ${step.item || 'item'}`;
+        case 'set_card': return `Select card · ${step.card || 'card'}`;
+        case 'begin_checkout': return 'Begin checkout';
+        case 'retry_payment': return 'Retry payment';
+        case 'view_receipt': return 'View receipt';
+        case 'refresh_cart': return 'Refresh cart';
+        default: return action.replace(/_/g, ' ');
+      }
+    }
+
+    function getActionBadge(step) {
+      if (!step || typeof step !== 'object') return '';
+      if (step.card) return `<span class="badge badge-card">${esc(step.card)}</span>`;
+      if (step.item) return `<span class="badge badge-item">${esc(step.item)}</span>`;
+      if (step.action === 'retry_payment') return `<span class="badge badge-bounded">retry</span>`;
+      if (step.action === 'begin_checkout') return `<span class="badge badge-sample">checkout</span>`;
+      return '';
+    }
+
+    // Render readable timeline from parsed actions
+    function renderTimeline(trace) {
+      if (!Array.isArray(trace)) {
+        timelineRowsEl.innerHTML = '<div style="padding:16px;color:var(--sp-text-muted);">Trace must be a JSON array of steps</div>';
+        timelineCountBadge.textContent = '0';
+        return;
+      }
+      timelineCountBadge.textContent = String(trace.length);
+      timelineRowsEl.innerHTML = trace.map((step, idx) => `
+        <div class="timeline-row">
+          <div class="timeline-step-left">
+            <span class="timeline-idx">${String(idx + 1).padStart(2, '0')}</span>
+            <span class="timeline-label">${esc(formatActionText(step))}</span>
+          </div>
+          <div>${getActionBadge(step)}</div>
+        </div>
+      `).join('');
+    }
+
+    // Tab switching
+    function switchTab(mode) {
+      if (mode === 'timeline') {
+        tabTimelineBtn.classList.add('active');
+        tabTimelineBtn.setAttribute('aria-selected', 'true');
+        tabEditorBtn.classList.remove('active');
+        tabEditorBtn.setAttribute('aria-selected', 'false');
+        viewTimeline.classList.add('active');
+        viewEditor.classList.remove('active');
+      } else {
+        tabEditorBtn.classList.add('active');
+        tabEditorBtn.setAttribute('aria-selected', 'true');
+        tabTimelineBtn.classList.remove('active');
+        tabTimelineBtn.setAttribute('aria-selected', 'false');
+        viewEditor.classList.add('active');
+        viewTimeline.classList.remove('active');
+      }
+    }
+
+    tabTimelineBtn.addEventListener('click', () => switchTab('timeline'));
+    tabEditorBtn.addEventListener('click', () => switchTab('editor'));
+
+    // Textarea input handling & live validation
+    traceTextarea.addEventListener('input', () => {
+      try {
+        const parsed = JSON.parse(traceTextarea.value);
+        if (!Array.isArray(parsed)) throw new Error('Trace must be a JSON array of actions');
+        traceTextarea.setAttribute('aria-invalid', 'false');
+        traceTextarea.removeAttribute('aria-describedby');
+        editorErrorMsg.style.display = 'none';
+        jsonStatusEl.textContent = `Valid JSON (${parsed.length} steps)`;
+        jsonStatusEl.classList.remove('err');
+        renderTimeline(parsed);
+      } catch (err) {
+        traceTextarea.setAttribute('aria-invalid', 'true');
+        traceTextarea.setAttribute('aria-describedby', 'editor-error-msg');
+        editorErrorMsg.style.display = 'flex';
+        editorErrorText.textContent = err.message;
+        jsonStatusEl.textContent = 'Invalid JSON syntax';
+        jsonStatusEl.classList.add('err');
+      }
+    });
+
+    // Keyboard shortcut: Ctrl/Cmd + Enter
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        runAnalysis();
+      }
+    });
+
+    // Phase badge helper
+    function setPhase(label, className = 'phase-ready') {
+      phaseBadge.textContent = label;
+      phaseBadge.className = `phase-tag ${className}`;
+    }
+
+    // Load initial sample from /api/sample
+    async function loadSample() {
+      try {
+        const res = await fetch('/api/sample');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        sampleData = await res.json();
+
+        if (sampleData.title) sampleTitleEl.textContent = sampleData.title;
+        if (sampleData.issue) sampleIssueEl.textContent = sampleData.issue;
+
+        traceTextarea.value = JSON.stringify(sampleData.trace, null, 2);
+        traceTextarea.setAttribute('aria-invalid', 'false');
+        traceTextarea.removeAttribute('aria-describedby');
+        editorErrorMsg.style.display = 'none';
+        jsonStatusEl.textContent = `Valid JSON (${sampleData.trace.length} steps)`;
+        jsonStatusEl.classList.remove('err');
+
+        renderTimeline(sampleData.trace);
+        setPhase('Ready', 'phase-ready');
+        renderReadyState();
+      } catch (err) {
+        sampleIssueEl.textContent = `Could not load sample: ${err.message}`;
+        setPhase('Unavailable', 'phase-error');
+      }
+    }
+
+    // Reset sample button
+    function resetToSample() {
+      if (!sampleData) return;
+      traceTextarea.value = JSON.stringify(sampleData.trace, null, 2);
+      traceTextarea.setAttribute('aria-invalid', 'false');
+      traceTextarea.removeAttribute('aria-describedby');
+      editorErrorMsg.style.display = 'none';
+      jsonStatusEl.textContent = `Valid JSON (${sampleData.trace.length} steps)`;
+      jsonStatusEl.classList.remove('err');
+
+      renderTimeline(sampleData.trace);
+      setPhase('Ready', 'phase-ready');
+      renderReadyState();
+
+      heroStripCaption.textContent = 'Trace verification workflow';
+      heroStripDisplay.innerHTML = `
+        <span class="eq-item">Ready to verify this trace</span>
+        <span class="eq-arrow">·</span>
+        <span class="eq-item">Fresh-state replay</span>
+        <span class="eq-arrow">·</span>
+        <span class="eq-item">Exact failure identity</span>
+        <span class="eq-arrow">·</span>
+        <span class="eq-item">Fix verification</span>
+      `;
+
+      announcer.textContent = 'Sample trace reset to original state.';
+    }
+
+    resetBtn.addEventListener('click', resetToSample);
+    heroResetBtn.addEventListener('click', resetToSample);
+
+    // Initial Honest Ready View
+    function renderReadyState() {
+      resultContainer.innerHTML = `
+        <div class="ready-state">
+          <div class="ready-icon" aria-hidden="true">⌁</div>
+          <h3 class="ready-title">Ready to verify this trace</h3>
+          <p class="ready-desc">Analyze this stateful checkout sequence to determine whether it reproduces a failure, can be reduced to a smaller valid sequence, and whether the corrected implementation stops it.</p>
+          <div class="ready-preview-card">
+            <div class="ready-preview-header">Verification protocol</div>
+            <div class="ready-preview-equation">Every candidate replay starts from fresh state and must preserve the exact observed failure ID.</div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Honest pending progression display (no fake timers/streaming)
+    function showPendingState() {
+      isAnalyzing = true;
+      setPhase('Analyzing…', 'phase-analyzing');
+      runBtn.disabled = true;
+      resetBtn.disabled = true;
+      heroAnalyzeBtn.disabled = true;
+      heroResetBtn.disabled = true;
+      workspaceMain.setAttribute('aria-busy', 'true');
+      announcer.textContent = 'Analyzing trace: replaying from fresh state and evaluating candidate reductions.';
+
+      resultContainer.innerHTML = `
+        <div class="pending-panel" role="status" aria-label="Analyzing trace">
+          <div class="pending-header">
+            <div class="pending-spinner" aria-hidden="true"></div>
+            <div>
+              <h3 class="pending-title">Analyzing trace…</h3>
+              <p class="pending-subtitle">Replaying from fresh state on local Python server…</p>
+            </div>
+          </div>
+          <div class="pending-stages-card">
+            <div class="pending-stages-title">Evaluation steps</div>
+            <ul class="pending-stage-list">
+              <li class="pending-stage-item"><span class="pending-stage-bullet">1.</span> Schema and state protocol validation</li>
+              <li class="pending-stage-item"><span class="pending-stage-bullet">2.</span> Fresh-state replay</li>
+              <li class="pending-stage-item"><span class="pending-stage-bullet">3.</span> Validity-aware candidate reduction (≤250 checks)</li>
+              <li class="pending-stage-item"><span class="pending-stage-bullet">4.</span> Five fresh confirmation trials</li>
+              <li class="pending-stage-item"><span class="pending-stage-bullet">5.</span> Corrected-behavior verification</li>
+            </ul>
+          </div>
+          <p class="pending-note">Analyzing up to 40 steps with ≤250 candidate checks. No fabricated timings or percentages.</p>
+        </div>
+      `;
+    }
+
+    function clearPendingState() {
+      isAnalyzing = false;
+      runBtn.disabled = false;
+      resetBtn.disabled = false;
+      heroAnalyzeBtn.disabled = false;
+      heroResetBtn.disabled = false;
+      workspaceMain.removeAttribute('aria-busy');
+    }
+
+    // Main analysis invocation
+    async function runAnalysis() {
+      if (isAnalyzing) return; // Prevent double-submission
+
+      let trace;
+      try {
+        trace = JSON.parse(traceTextarea.value);
+        if (!Array.isArray(trace)) throw new Error('Trace must be a JSON array of step objects');
+        traceTextarea.setAttribute('aria-invalid', 'false');
+        traceTextarea.removeAttribute('aria-describedby');
+        editorErrorMsg.style.display = 'none';
+      } catch (err) {
+        traceTextarea.setAttribute('aria-invalid', 'true');
+        traceTextarea.setAttribute('aria-describedby', 'editor-error-msg');
+        editorErrorMsg.style.display = 'flex';
+        editorErrorText.textContent = err.message;
+        switchTab('editor');
+        renderJsonErrorState(err.message);
+        return;
+      }
+
+      showPendingState();
+
+      try {
+        const bodyStr = JSON.stringify({ trace });
+        if (new TextEncoder().encode(bodyStr).length > 32768) {
+          throw new Error('Request exceeds 32 KiB payload limit.');
+        }
+
+        const res = await fetch('/api/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: bodyStr
+        });
+
+        let data;
+        try {
+          data = await res.json();
+        } catch (_) {
+          throw new Error(`Invalid JSON received from server (HTTP ${res.status})`);
+        }
+
+        clearPendingState();
+
+        if (!res.ok) {
+          renderTransportError(data.error || `Server responded with HTTP ${res.status}`);
+          return;
+        }
+
+        lastApiResponse = data;
+        renderVerdict(data);
+      } catch (err) {
+        clearPendingState();
+        renderTransportError(err.message || 'Network request failed');
+      }
+    }
+
+    runBtn.addEventListener('click', runAnalysis);
+    heroAnalyzeBtn.addEventListener('click', runAnalysis);
+
+    // Route verdict rendering
+    function renderVerdict(data) {
+      if (data && data.status === 'REPRODUCED') {
+        renderVerifiedResult(data);
+      } else if (data && data.status === 'INVALID_TRACE') {
+        renderInvalidTrace(data);
+      } else if (data && data.status === 'NOT_REPRODUCED') {
+        renderNotReproduced(data);
+      } else if (data && data.status === 'FLAKY') {
+        renderFlaky(data);
+      } else {
+        renderTransportError(`Unexpected response format from server`);
+      }
+    }
+
+    // Subsequence Ambiguity Detector:
+    // Finds all ordered subsequence embeddings of `red` in `orig`.
+    // Only if exactly one embedding exists is row alignment unambiguous.
+    function checkSubsequenceAlignment(orig, red) {
+      if (!Array.isArray(orig) || !Array.isArray(red) || red.length === 0) {
+        return { isUnique: false, keptIndices: new Set() };
+      }
+      const results = [];
+      function search(oIdx, rIdx, currentIndices) {
+        if (rIdx === red.length) {
+          results.push([...currentIndices]);
+          return;
+        }
+        const target = JSON.stringify(red[rIdx]);
+        for (let i = oIdx; i < orig.length; i++) {
+          if (JSON.stringify(orig[i]) === target) {
+            currentIndices.push(i);
+            search(i + 1, rIdx + 1, currentIndices);
+            currentIndices.pop();
+            if (results.length > 1) return; // Discovered ambiguity early
+          }
+        }
+      }
+      search(0, 0, []);
+      if (results.length === 1) {
+        return { isUnique: true, keptIndices: new Set(results[0]) };
+      }
+      return { isUnique: false, keptIndices: new Set() };
+    }
+
+    // Render verified REPRODUCED state
+    function renderVerifiedResult(data) {
+      setPhase('Verified', 'phase-verified');
+
+      const original = data.original_steps || [];
+      const reduced = data.reduced_steps || [];
+      const pctReduction = original.length > 0 ? Math.round(100 * (1 - reduced.length / original.length)) : 0;
+      const matchingTrials = (data.trials || []).filter(t => t.status === 'REPRODUCED' && t.failure_id === data.failure_id).length;
+      const totalTrials = (data.trials || []).length;
+
+      // Update hero strip strictly with REAL response values
+      heroStripCaption.textContent = 'Live verified result';
+      heroStripDisplay.innerHTML = `
+        <span class="eq-item">${original.length} actions</span>
+        <span class="eq-arrow">→</span>
+        <span class="eq-item eq-proof">${reduced.length} proof steps</span>
+        <span class="eq-arrow">→</span>
+        <span class="eq-item">${matchingTrials}/${totalTrials} confirmed</span>
+        <span class="eq-arrow">→</span>
+        <span class="eq-item">${data.fixed_passes ? 'fix passes' : 'fix needs review'}</span>
+      `;
+
+      announcer.textContent = `Analysis complete: Same failure verified. ${original.length} actions reduced to ${reduced.length} proof steps. ${data.failure_id} confirmed in ${matchingTrials} of ${totalTrials} fresh replays.`;
+
+      // Subsequence ambiguity check
+      const alignment = checkSubsequenceAlignment(original, reduced);
+
+      // Build failure moment card HTML with oracle limitation copy
+      let failureMomentHtml = '';
+      if (data.original && (data.original.expected !== undefined || data.original.actual !== undefined)) {
+        failureMomentHtml = `
+          <div class="failure-moment-card">
+            <div class="failure-moment-header">
+              <span class="failure-moment-title">Observed failure moment</span>
+              <span class="badge badge-failure">${esc(data.failure_id)}</span>
+            </div>
+            <div class="failure-moment-grid">
+              ${data.original.expected !== undefined ? `
+                <div class="failure-col">
+                  <span class="failure-label">Expected at retry</span>
+                  <span class="failure-val expected">${esc(data.original.expected)}</span>
+                </div>
+              ` : ''}
+              ${data.original.actual !== undefined ? `
+                <div class="failure-col">
+                  <span class="failure-label">Actually charged</span>
+                  <span class="failure-val actual">${esc(data.original.actual)}</span>
+                </div>
+              ` : ''}
+            </div>
+            ${data.original.detail ? `<div class="failure-moment-detail">${esc(data.original.detail)}</div>` : ''}
+            <div class="failure-moment-oracle-note">The summary reports the first mismatching retry. Later attempts remain available in the replay event log.</div>
+          </div>
+        `;
+      }
+
+      // Build trial cells
+      const trialCellsHtml = (data.trials || []).map((t, idx) => {
+        const isMatch = t.status === 'REPRODUCED' && t.failure_id === data.failure_id;
+        const cls = isMatch ? 'trial-pass' : 'trial-fail';
+        const label = `Trial ${idx + 1}: ${esc(t.status)} (${esc(t.failure_id || 'none')})`;
+        return `
+          <div class="trial-cell ${cls}" title="${label}" aria-label="${label}">
+            <span>#${idx + 1}</span>
+            <span>${isMatch ? '✓ Verified' : '✗ Diverged'}</span>
+          </div>
+        `;
+      }).join('');
+
+      // Corrected behavior callout
+      const fixedCalloutHtml = data.fixed_passes ? `
+        <div class="status-callout callout-success">
+          <div class="callout-icon">✓</div>
+          <div>
+            <strong>Corrected behavior: target failure not reproduced</strong>
+            <div class="callout-desc">${esc(data.fixed_result ? data.fixed_result.detail : 'Charges current active card on retry')}</div>
+          </div>
+        </div>
+      ` : `
+        <div class="status-callout callout-warning">
+          <div class="callout-icon">⚠</div>
+          <div>
+            <strong>Corrected behavior still needs review</strong>
+            <div class="callout-desc">${esc(data.fixed_result ? data.fixed_result.detail : 'Result did not confirm fix')}</div>
+          </div>
+        </div>
+      `;
+
+      // Original trace list: conservative alignment
+      const origListHtml = original.map((step, idx) => {
+        let cls = 'step-neutral';
+        let badgeHtml = '';
+        if (alignment.isUnique) {
+          const isKept = alignment.keptIndices.has(idx);
+          cls = isKept ? 'step-retained-orig' : 'step-pruned';
+          badgeHtml = isKept ? '<span class="badge badge-bounded">retained</span>' : '';
+        }
+        return `
+          <div class="step-item ${cls}">
+            <div class="step-item-left">
+              <span class="step-item-idx">${String(idx + 1).padStart(2, '0')}</span>
+              <span class="step-item-text">${esc(formatActionText(step))}</span>
+            </div>
+            <div>${badgeHtml}</div>
+          </div>
+        `;
+      }).join('');
+
+      // Ambiguity note if mapping wasn't strictly unique
+      const ambiguityNoticeHtml = alignment.isUnique ? '' : `
+        <div class="comparison-ambiguity-note">
+          ⚠ Original-row alignment is ambiguous because identical actions repeat. Showing original trace and verified reduced sequence separately without claiming specific row provenance.
+        </div>
+      `;
+
+      // Reduced trace list
+      const reducedListHtml = reduced.map((step, idx) => `
+        <div class="step-item step-proof">
+          <div class="step-item-left">
+            <span class="step-item-idx">${String(idx + 1).padStart(2, '0')}</span>
+            <span class="step-item-text">${esc(formatActionText(step))}</span>
+          </div>
+          <div>${getActionBadge(step)}</div>
+        </div>
+      `).join('');
+
+      // Events table in drawer
+      const eventsTableHtml = (data.original && data.original.events ? data.original.events : []).map(ev => {
+        const isMismatch = ev.charged_card && ev.charged_card !== ev.current_card;
+        return `
+          <tr>
+            <td>${esc(ev.step)}</td>
+            <td><code>${esc(ev.action)}</code></td>
+            <td>${esc(ev.current_card || '—')}</td>
+            <td>${esc(ev.pending_card || '—')}</td>
+            <td class="${isMismatch ? 'cell-diff' : ''}">${esc(ev.charged_card || '—')}</td>
+          </tr>
+        `;
+      }).join('');
+
+      // Construct Result Panel HTML
+      resultContainer.innerHTML = `
+        <div class="result-view" tabindex="-1">
+          <!-- Result Hero -->
+          <div class="result-hero">
+            <div class="result-hero-top">
+              <span class="badge badge-success">Same failure verified</span>
+              <span class="reduction-pill">${pctReduction}% fewer steps</span>
+            </div>
+            <div class="equation-large">
+              <span>${original.length} actions</span>
+              <span class="arrow">→</span>
+              <span class="steps-reduced">${reduced.length} proof steps</span>
+            </div>
+            <div class="result-hero-badges">
+              <span class="badge badge-failure">${esc(data.failure_id)}</span>
+              <span class="badge badge-sample">${matchingTrials}/${totalTrials} fresh confirmations</span>
+            </div>
+            <div class="result-hero-meta">
+              ${esc(data.attempts)} candidate checks · ${esc(data.orphan_steps_pruned)} orphan steps pruned · ${esc(data.duration_ms)} ms execution
+            </div>
+          </div>
+
+          <!-- Failure Moment -->
+          ${failureMomentHtml}
+
+          <!-- Confirmation Strip -->
+          <div class="confirmation-section">
+            <div class="confirmation-header">
+              <span class="confirmation-title">Fresh Confirmation Trials</span>
+              <span class="confirmation-count">${matchingTrials} of ${totalTrials} confirmed</span>
+            </div>
+            <div class="trial-strip" role="group" aria-label="Trial confirmations">
+              ${trialCellsHtml}
+            </div>
+          </div>
+
+          <!-- Corrected Behavior Callout -->
+          ${fixedCalloutHtml}
+
+          <!-- Comparison Section -->
+          <div class="traces-comparison">
+            <div class="comparison-col">
+              <div class="col-header">
+                <span class="col-title">Original trace · ${original.length} steps</span>
+              </div>
+              <div class="step-list">
+                ${origListHtml}
+              </div>
+              ${ambiguityNoticeHtml}
+              <div class="comparison-footnote">
+                ${alignment.isUnique ? 'Pruned noise struck out. No steps reordered.' : 'Complete original execution trace.'}
+              </div>
+            </div>
+            <div class="comparison-col">
+              <div class="col-header">
+                <span class="col-title">Reduced proof · ${reduced.length} steps</span>
+                <span class="badge badge-bounded">verified</span>
+              </div>
+              <div class="step-list">
+                ${reducedListHtml}
+              </div>
+              <div class="comparison-footnote">Pruned without insertion or reordering. Every step verified necessary.</div>
+            </div>
+          </div>
+
+          <!-- Proof Drawer -->
+          <details class="proof-drawer" id="proof-drawer">
+            <summary>
+              <span>Inspect execution proof & diagnostics</span>
+              <span class="drawer-arrow" aria-hidden="true">▼</span>
+            </summary>
+            <div class="drawer-content">
+              <div class="drawer-stats-grid">
+                <div class="stat-card">
+                  <span class="stat-label">Original Status</span>
+                  <span class="stat-val">${esc(data.original ? data.original.status : '—')}</span>
+                </div>
+                <div class="stat-card">
+                  <span class="stat-label">Failure ID</span>
+                  <span class="stat-val" style="color:var(--sp-failure);">${esc(data.failure_id)}</span>
+                </div>
+                <div class="stat-card">
+                  <span class="stat-label">Candidate Checks</span>
+                  <span class="stat-val">${esc(data.attempts)}</span>
+                </div>
+                <div class="stat-card">
+                  <span class="stat-label">Orphans Pruned</span>
+                  <span class="stat-val">${esc(data.orphan_steps_pruned)}</span>
+                </div>
+                <div class="stat-card">
+                  <span class="stat-label">Duration</span>
+                  <span class="stat-val">${esc(data.duration_ms)} ms</span>
+                </div>
+              </div>
+
+              <div class="drawer-subhead">Replay Event Log (Original Trace)</div>
+              <p class="comparison-footnote" style="margin-bottom:8px;">The summary reports the first mismatching retry. Later attempts remain available in this event log.</p>
+              <div class="events-table-wrap">
+                <table class="events-table">
+                  <thead>
+                    <tr>
+                      <th>Step</th>
+                      <th>Action</th>
+                      <th>Current Card</th>
+                      <th>Pending Card</th>
+                      <th>Charged Card</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${eventsTableHtml}
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="drawer-actions">
+                <button type="button" class="btn btn-secondary" id="download-proof-btn">
+                  <svg class="btn-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" aria-hidden="true">
+                    <path d="M8 2v9M4 7l4 4 4-4M2 13h12"/>
+                  </svg>
+                  Download proof JSON
+                </button>
+                <span class="drawer-hint">Tied directly to latest /api/analyze response.</span>
+              </div>
+
+              <div class="scope-note">
+                This result is locally reduced within a bounded search. Every accepted candidate is replayed from fresh state and must preserve the exact observed failure ID. The sample uses synthetic data.
+              </div>
+            </div>
+          </details>
+        </div>
+      `;
+
+      // Move programmatic focus to result container
+      const rv = resultContainer.querySelector('.result-view');
+      if (rv) rv.focus();
+
+      // Attach download listener
+      const dlBtn = document.getElementById('download-proof-btn');
+      if (dlBtn) dlBtn.addEventListener('click', downloadProofJson);
+    }
+
+    // Download proof JSON handler
+    function downloadProofJson() {
+      if (!lastApiResponse) return;
+      const blob = new Blob([JSON.stringify(lastApiResponse, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'sequenceproof-evidence.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    // Negative State: INVALID_TRACE
+    function renderInvalidTrace(data) {
+      setPhase('Invalid trace', 'phase-error');
+      announcer.textContent = `Analysis complete: Invalid trace. ${data.original ? data.original.detail : ''}`;
+
+      resultContainer.innerHTML = `
+        <div class="negative-card state-invalid" tabindex="-1">
+          <div class="negative-head">
+            <span class="badge badge-error">INVALID_TRACE</span>
+            <h3 class="negative-title">Invalid trace</h3>
+          </div>
+          <div class="negative-detail">
+            ${esc(data.original ? data.original.detail : 'State protocol validation error')}
+            ${data.original && data.original.at_step ? ` (at step ${esc(data.original.at_step)})` : ''}
+          </div>
+          <div class="negative-explanation">
+            <p>SequenceProof rejects invalid traces and protocol violations immediately. In order to preserve mathematical and causal integrity, <strong>invalid candidates are never counted as reproduction evidence</strong>, and no reduction is attempted.</p>
+          </div>
+          <div class="negative-actions">
+            <button type="button" class="btn btn-secondary" onclick="resetToSample()">Reset to valid sample</button>
+          </div>
+        </div>
+        <div class="scope-note">
+          This result is locally reduced within a bounded search. Every accepted candidate is replayed from fresh state and must preserve the exact observed failure ID. The sample uses synthetic data.
+        </div>
+      `;
+      const nc = resultContainer.querySelector('.negative-card');
+      if (nc) nc.focus();
+    }
+
+    // Negative State: NOT_REPRODUCED
+    function renderNotReproduced(data) {
+      setPhase('Not reproduced', 'phase-neutral');
+      announcer.textContent = `Analysis complete: Target failure not reproduced. ${data.original ? data.original.detail : ''}`;
+
+      resultContainer.innerHTML = `
+        <div class="negative-card state-not-reproduced" tabindex="-1">
+          <div class="negative-head">
+            <span class="badge badge-neutral">NOT_REPRODUCED</span>
+            <h3 class="negative-title">Target failure not reproduced</h3>
+          </div>
+          <div class="negative-detail">${esc(data.original ? data.original.detail : 'No wrong card charge occurred')}</div>
+          <div class="negative-explanation">
+            <p>The trace executed cleanly from fresh state without reproducing the <code>WRONG_CARD_CHARGED</code> failure. SequenceProof only reduces traces that demonstrate the target failure, so no reduced proof was produced.</p>
+          </div>
+          <div class="negative-actions">
+            <button type="button" class="btn btn-secondary" onclick="resetToSample()">Reset to sample</button>
+          </div>
+        </div>
+        <div class="scope-note">
+          This result is locally reduced within a bounded search. Every accepted candidate is replayed from fresh state and must preserve the exact observed failure ID. The sample uses synthetic data.
+        </div>
+      `;
+      const nc = resultContainer.querySelector('.negative-card');
+      if (nc) nc.focus();
+    }
+
+    // Negative State: FLAKY (distinct warning amber state)
+    function renderFlaky(data) {
+      setPhase('Flaky', 'phase-warning');
+      announcer.textContent = 'Analysis complete: Confirmation inconsistent. Candidate trace was flaky and not verified.';
+
+      const trialsHtml = (data.trials || []).map((t, idx) => {
+        const isMatch = t.status === 'REPRODUCED' && t.failure_id === data.failure_id;
+        return `
+          <div class="trial-cell ${isMatch ? 'trial-pass' : 'trial-fail'}">
+            <span>#${idx + 1}</span>
+            <span>${esc(t.status)} (${esc(t.failure_id || 'none')})</span>
+          </div>
+        `;
+      }).join('');
+
+      resultContainer.innerHTML = `
+        <div class="negative-card state-flaky" tabindex="-1">
+          <div class="negative-head">
+            <span class="badge badge-warning">FLAKY</span>
+            <h3 class="negative-title">Confirmation inconsistent (FLAKY)</h3>
+          </div>
+          <div class="negative-detail">The failure did not reproduce consistently in 5 fresh replays. This candidate cannot be verified as proof.</div>
+          <div class="trial-strip" style="margin-bottom: 14px;">
+            ${trialsHtml}
+          </div>
+          <div class="negative-explanation">
+            <p>SequenceProof requires all 5 fresh replays to yield the exact original failure ID. Because one or more replays produced a different outcome, this candidate is marked flaky and no reduction evidence is claimed.</p>
+          </div>
+          <div class="negative-actions">
+            <button type="button" class="btn btn-secondary" onclick="runAnalysis()">Retry analysis</button>
+            <button type="button" class="btn btn-secondary" onclick="resetToSample()">Reset sample</button>
+          </div>
+        </div>
+      `;
+      const nc = resultContainer.querySelector('.negative-card');
+      if (nc) nc.focus();
+    }
+
+    // Editor JSON error state
+    function renderJsonErrorState(errMsg) {
+      setPhase('JSON error', 'phase-error');
+      announcer.textContent = `JSON needs correction: ${errMsg}`;
+
+      resultContainer.innerHTML = `
+        <div class="negative-card state-invalid" tabindex="-1">
+          <div class="negative-head">
+            <span class="badge badge-error">SYNTAX ERROR</span>
+            <h3 class="negative-title">JSON needs correction</h3>
+          </div>
+          <div class="negative-detail">${esc(errMsg)}</div>
+          <div class="negative-explanation">
+            <p>The editor contains invalid JSON syntax. Please correct the trace syntax before analyzing. No request was sent to the backend, and your editor input has been preserved.</p>
+          </div>
+          <div class="negative-actions">
+            <button type="button" class="btn btn-secondary" onclick="switchTab('editor')">Return to editor</button>
+            <button type="button" class="btn btn-secondary" onclick="resetToSample()">Reset to valid sample</button>
+          </div>
+        </div>
+      `;
+      const nc = resultContainer.querySelector('.negative-card');
+      if (nc) nc.focus();
+    }
+
+    // Transport / Server error state
+    function renderTransportError(errMsg) {
+      setPhase('Unavailable', 'phase-error');
+      announcer.textContent = `Analysis unavailable: ${errMsg}`;
+
+      resultContainer.innerHTML = `
+        <div class="negative-card state-error" tabindex="-1">
+          <div class="negative-head">
+            <span class="badge badge-error">TRANSPORT ERROR</span>
+            <h3 class="negative-title">Analysis unavailable</h3>
+          </div>
+          <div class="negative-detail">${esc(errMsg)}</div>
+          <div class="negative-explanation">
+            <p>The server could not complete the request. Ensure the backend server is running and that request payload does not exceed 32 KiB. Your editor input has been preserved.</p>
+          </div>
+          <div class="negative-actions">
+            <button type="button" class="btn btn-secondary" onclick="runAnalysis()">Retry</button>
+            <button type="button" class="btn btn-secondary" onclick="resetToSample()">Reset sample</button>
+          </div>
+        </div>
+      `;
+      const nc = resultContainer.querySelector('.negative-card');
+      if (nc) nc.focus();
+    }
+
+    // Initialize application on load
+    loadSample();
+  </script>
+</body>
+</html>
