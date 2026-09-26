@@ -179,6 +179,60 @@ class ReproductionTests(unittest.TestCase):
         r_fixed = replay(trace, fixed=True)
         self.assertEqual(r_fixed["status"], "NOT_REPRODUCED")
 
+    def test_every_wrong_retry_is_exposed_as_evidence(self):
+        """The API must expose every mismatch, not only the compatibility summary."""
+        trace = [
+            {"action": "add_item", "item": "pen"},
+            {"action": "begin_checkout"},              # pending card-A
+            {"action": "set_card", "card": "card-B"},
+            {"action": "retry_payment"},               # expected B, charged A
+            {"action": "set_card", "card": "card-C"},
+            {"action": "retry_payment"},               # expected C, charged A
+        ]
+        result = replay(trace)
+        self.assertEqual(result["status"], "REPRODUCED")
+        self.assertEqual(result["mismatch_count"], 2)
+        self.assertEqual(
+            [(item["attempt"], item["step"], item["expected"], item["actual"])
+             for item in result["mismatches"]],
+            [(1, 4, "card-B", "card-A"), (2, 6, "card-C", "card-A")],
+        )
+        # Existing clients retain the original first-mismatch fields.
+        self.assertEqual(result["expected"], "card-B")
+        self.assertEqual(result["actual"], "card-A")
+
+    def test_event_log_marks_only_retry_attempts_as_charges(self):
+        trace = [
+            {"action": "add_item", "item": "pen"},
+            {"action": "begin_checkout"},
+            {"action": "set_card", "card": "card-B"},
+            {"action": "retry_payment"},
+            {"action": "view_receipt"},
+        ]
+        events = replay(trace)["events"]
+        charged_events = [event for event in events if event["charged_card"] is not None]
+        self.assertEqual(len(charged_events), 1)
+        self.assertEqual(charged_events[0]["action"], "retry_payment")
+        self.assertTrue(charged_events[0]["is_mismatch"])
+        self.assertEqual(charged_events[0]["expected_card"], "card-B")
+        self.assertIsNone(events[-1]["charged_card"])
+
+    def test_default_reduction_has_one_minimal_certificate(self):
+        result = analyze(SAMPLE)
+        certificate = result["minimality"]
+        self.assertTrue(certificate["certified"])
+        self.assertEqual(certificate["kind"], "one-minimal")
+        self.assertLessEqual(result["attempts"], 250)
+        for index in range(len(result["reduced_steps"])):
+            candidate, _ = prune_orphaned_steps(
+                result["reduced_steps"][:index] + result["reduced_steps"][index + 1:]
+            )
+            self.assertNotEqual(
+                replay(candidate).get("failure_id"),
+                result["failure_id"],
+                "certificate must fail if any retained step is removable",
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

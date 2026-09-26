@@ -15,7 +15,7 @@ class Checkout:
     card: str = "card-A"
     cart: list[str] = field(default_factory=list)
     pending_card: str | None = None
-    retry_attempts: list[dict[str, str]] = field(default_factory=list)
+    retry_attempts: list[dict[str, Any]] = field(default_factory=list)
 
     def apply(self, step: dict[str, Any], fixed: bool = False) -> None:
         action = step["action"]
@@ -67,6 +67,18 @@ def validate_trace(raw: Any) -> list[dict[str, Any]]:
     return result
 
 
+def _attempt_evidence(state: Checkout) -> dict[str, Any]:
+    """Return stable, JSON-safe evidence for every payment retry."""
+    attempts = [dict(attempt) for attempt in state.retry_attempts]
+    mismatches = [attempt for attempt in attempts
+                  if attempt["actual"] != attempt["expected"]]
+    return {
+        "retry_attempts": attempts,
+        "mismatches": mismatches,
+        "mismatch_count": len(mismatches),
+    }
+
+
 def replay(trace: list[dict[str, Any]], fixed: bool = False) -> dict[str, Any]:
     state = Checkout()  # Fresh state for every candidate and trial.
     events = []
@@ -74,24 +86,34 @@ def replay(trace: list[dict[str, Any]], fixed: bool = False) -> dict[str, Any]:
         try:
             state.apply(step, fixed=fixed)
         except ValueError as exc:
-            return {"status": "INVALID_TRACE", "failure_id": None, "detail": str(exc), "at_step": i + 1, "events": events}
-        # For event logging, surface the most-recent attempt's charged card (None if none yet).
-        last_charged = state.retry_attempts[-1]["actual"] if state.retry_attempts else None
+            return {"status": "INVALID_TRACE", "failure_id": None,
+                    "detail": str(exc), "at_step": i + 1, "events": events,
+                    **_attempt_evidence(state)}
+        attempt = None
+        if step["action"] == "retry_payment":
+            attempt = state.retry_attempts[-1]
+            attempt["attempt"] = len(state.retry_attempts)
+            attempt["step"] = i + 1
         events.append({"step": i + 1, "action": step["action"], "current_card": state.card,
-                       "pending_card": state.pending_card, "charged_card": last_charged})
+                       "pending_card": state.pending_card,
+                       "expected_card": attempt["expected"] if attempt else None,
+                       "charged_card": attempt["actual"] if attempt else None,
+                       "is_mismatch": bool(attempt and attempt["actual"] != attempt["expected"])})
+    evidence = _attempt_evidence(state)
     if not state.retry_attempts:
-        return {"status": "NOT_REPRODUCED", "failure_id": None, "detail": "No payment retry occurred", "events": events}
-    # Check every attempt: WRONG_CARD_CHARGED if any attempt charged a different card
-    # than the one active at that retry time.  Report the first mismatch found.
-    for attempt in state.retry_attempts:
-        if attempt["actual"] != attempt["expected"]:
-            return {"status": "REPRODUCED", "failure_id": "WRONG_CARD_CHARGED",
-                    "detail": f"Expected {attempt['expected']}, charged {attempt['actual']}",
-                    "expected": attempt["expected"], "actual": attempt["actual"], "events": events}
+        return {"status": "NOT_REPRODUCED", "failure_id": None,
+                "detail": "No payment retry occurred", "events": events, **evidence}
+    if evidence["mismatches"]:
+        first = evidence["mismatches"][0]
+        return {"status": "REPRODUCED", "failure_id": "WRONG_CARD_CHARGED",
+                "detail": f"Expected {first['expected']}, charged {first['actual']}",
+                # Keep these fields for compatibility while exposing every mismatch below.
+                "expected": first["expected"], "actual": first["actual"],
+                "events": events, **evidence}
     return {"status": "NOT_REPRODUCED", "failure_id": None,
             "detail": f"Charged the current card {state.retry_attempts[-1]['actual']}",
             "expected": state.retry_attempts[-1]["expected"],
-            "actual": state.retry_attempts[-1]["actual"], "events": events}
+            "actual": state.retry_attempts[-1]["actual"], "events": events, **evidence}
 
 
 def prune_orphaned_steps(candidate: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], int]:
@@ -121,8 +143,9 @@ def prune_orphaned_steps(candidate: list[dict[str, Any]]) -> tuple[list[dict[str
     return valid, pruned
 
 
-def reduce_trace(trace: list[dict[str, Any]], failure_id: str, budget: int = 250) -> tuple[list[dict[str, Any]], int, int]:
-    """Bounded, validity-aware ddmin; returns a locally reduced trace."""
+def reduce_trace(trace: list[dict[str, Any]], failure_id: str,
+                 budget: int = 250) -> tuple[list[dict[str, Any]], int, int, dict[str, Any]]:
+    """Bounded, validity-aware ddmin with an explicit one-minimal certificate."""
     current = trace[:]
     granularity = 2
     attempts = 0
@@ -145,7 +168,43 @@ def reduce_trace(trace: list[dict[str, Any]], failure_id: str, budget: int = 250
             if granularity >= len(current):
                 break
             granularity = min(len(current), granularity * 2)
-    return current, attempts, orphan_steps_pruned
+
+    # Verify the precise bounded guarantee used by the UI: no single retained
+    # step can be removed (including consequent orphan pruning) while preserving
+    # the exact failure ID. If a removable step is found, accept it and restart
+    # the certificate pass. Never exceed the shared candidate-check budget.
+    certificate_checks = 0
+    one_minimal = False
+    while current and attempts < budget:
+        removed = False
+        certificate_checks = 0
+        for index in range(len(current)):
+            if attempts >= budget:
+                break
+            candidate, pruned = prune_orphaned_steps(current[:index] + current[index + 1:])
+            attempts += 1
+            certificate_checks += 1
+            if candidate and replay(candidate).get("failure_id") == failure_id:
+                current = candidate
+                orphan_steps_pruned += pruned
+                removed = True
+                break
+        if removed:
+            continue
+        one_minimal = certificate_checks == len(current)
+        break
+
+    minimality = {
+        "kind": "one-minimal" if one_minimal else "bounded-local",
+        "certified": one_minimal,
+        "checks": certificate_checks,
+        "statement": (
+            "No single retained step can be removed while preserving the exact failure ID."
+            if one_minimal else
+            "The candidate-check budget ended before one-minimality could be certified."
+        ),
+    }
+    return current, attempts, orphan_steps_pruned, minimality
 
 
 def analyze(raw_trace: Any) -> dict[str, Any]:
@@ -155,7 +214,7 @@ def analyze(raw_trace: Any) -> dict[str, Any]:
     if original["status"] != "REPRODUCED":
         return {"status": original["status"], "original": original, "original_steps": trace,
                 "reduced_steps": None, "trials": [], "duration_ms": round((time.perf_counter() - start) * 1000, 2)}
-    reduced, attempts, orphan_steps_pruned = reduce_trace(trace, original["failure_id"])
+    reduced, attempts, orphan_steps_pruned, minimality = reduce_trace(trace, original["failure_id"])
     trials = [replay(reduced) for _ in range(5)]
     verified = all(t["status"] == "REPRODUCED" and t["failure_id"] == original["failure_id"] for t in trials)
     fixed = replay(reduced, fixed=True)
@@ -163,6 +222,7 @@ def analyze(raw_trace: Any) -> dict[str, Any]:
             "original": original, "original_steps": trace, "reduced_steps": reduced if verified else None,
             "trials": [{"status": t["status"], "failure_id": t["failure_id"]} for t in trials],
             "attempts": attempts, "orphan_steps_pruned": orphan_steps_pruned,
+            "minimality": minimality,
             "fixed_result": fixed, "fixed_passes": fixed["status"] == "NOT_REPRODUCED",
             "duration_ms": round((time.perf_counter() - start) * 1000, 2)}
 

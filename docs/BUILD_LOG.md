@@ -410,3 +410,78 @@ Execute the bounded Run 2.1 evidence-hardening pass on branch `antigravity/run-2
 - **Single-File Frontend (`index.html`):** The entire application (HTML, CSS, SVGs, and JavaScript) is packaged in a single 2,450-line file without external bundling or module separation.
 - **First Mismatch Oracle Surface:** The failure oracle captures all retry attempts, but the top-level API payload surfaces the expected/actual values of the first mismatching attempt; later attempts must be inspected via the replay event log.
 
+---
+
+## 2026-09-27 — Run 2.2: limitation-closure pass
+
+### Closed engineering limitations
+
+1. **Frontend monolith removed:** `index.html` is now the semantic shell,
+   `static/styles.css` owns the visual system, and `static/app.js` owns API,
+   state, validation, and rendering logic. `server.py` exposes only an exact
+   allowlist of those assets and does not expose source files or directory
+   traversal paths.
+2. **Complete retry evidence:** every retry attempt receives an attempt number
+   and trace-step index. The replay response includes `retry_attempts`, the
+   complete `mismatches` list, and `mismatch_count`. Compatibility fields
+   `expected` and `actual` still reference the first mismatch so existing
+   clients remain valid. The UI now lists every mismatch rather than directing
+   users to infer later failures from event history.
+3. **Precise minimality evidence:** the bounded reducer now performs a final
+   single-deletion certificate pass inside the same 250-check budget. A
+   certified result means no one retained step can be removed, including
+   consequent orphan pruning, while preserving the exact failure ID. The API
+   explicitly returns `one-minimal` or `bounded-local`; it never claims global
+   minimality.
+4. **Accurate event history:** charged and expected cards appear only on actual
+   `retry_payment` events. Later unrelated events no longer inherit the last
+   charge and therefore cannot be visually misclassified as additional
+   mismatches.
+5. **Reduced-motion behavior hardened:** the interface removes the decorative
+   spinner and short transitions without globally destroying useful state
+   feedback.
+
+### Changed files
+
+| File | Change |
+| --- | --- |
+| `index.html` | Reduced to the semantic shell and external asset references |
+| `static/styles.css` | Extracted visual system plus mismatch and reduced-motion styles |
+| `static/app.js` | Extracted interaction layer; complete mismatch and minimality rendering |
+| `server.py` | Exact static-asset allowlist and `nosniff` responses |
+| `sequenceproof.py` | Complete retry evidence and bounded one-minimal certificate |
+| `test_sequenceproof.py` | Regression coverage for all mismatches, event accuracy, and certificate |
+| `test_server.py` | Asset-serving, source-exposure, and API-contract coverage |
+| `README.md` | Updated contract and repository map |
+| `docs/ARCHITECTURE.md` | Updated component and proof flow |
+| `docs/BUILD_LOG.md` | This observed limitation-closure entry |
+
+### Observed verification
+
+`python -m unittest -v` completed with **16 tests passing**. The default owned
+sample remains `12 actions → 4 proof steps`, preserves
+`WRONG_CARD_CHARGED` in all **5/5** fresh confirmation runs, and the corrected
+implementation passes. The complete run used 35 candidate checks and returned:
+
+```json
+{
+  "kind": "one-minimal",
+  "certified": true,
+  "checks": 4
+}
+```
+
+The multi-retry API regression exposes both mismatches in attempt and trace
+order. HTTP tests confirm `/`, `/static/styles.css`, and `/static/app.js` load,
+while `/server.py` returns 404. `node --check static/app.js` also passes.
+
+### Deliberate product boundaries—not unresolved defects
+
+- SequenceProof intentionally proves one narrow, owned checkout protocol; it
+  does not execute arbitrary repositories or untrusted third-party code.
+- Search remains bounded to 40 actions and 250 candidate checks. The product
+  reports a precise one-minimal certificate when completed and otherwise
+  labels the result `bounded-local`; it never claims a global minimum.
+- IBM Bob is the required implementation and review workspace evidenced in
+  `bob_sessions/`. No live Bob runtime API is claimed or fabricated.
+
