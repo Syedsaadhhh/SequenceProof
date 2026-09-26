@@ -87,7 +87,7 @@ result, and runtime for this sample.
 
 ## What the proof means
 
-- A valid trace is executed from new state. The failure oracle is the observed `charged_card != current_card` after retry.
+- A valid trace is executed from fresh state. The failure oracle checks every recorded retry attempt and reports `WRONG_CARD_CHARGED` when the card actually charged differs from the card active at that retry moment.
 - Reduction uses bounded `ddmin` with up to 250 candidate checks. A checkout-specific repair pass prunes orphaned `remove_item`, `begin_checkout`, and `retry_payment` steps when their prerequisite disappears. It never inserts or reorders actions. Every repaired candidate still needs a valid fresh replay with the same `WRONG_CARD_CHARGED` failure ID; malformed parameters stay invalid.
 - The reduced trace is replayed five times from fresh state. The corrected implementation is then run on that same reduced trace.
 - This is a **locally reduced** trace, not a proof of globally shortest sequence. Results are limited to this owned sample project. No reported time saving has been measured against manual work.
