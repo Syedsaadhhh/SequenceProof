@@ -4,7 +4,7 @@ Paste everything below into Google Antigravity Agent mode after synchronizing th
 
 ---
 
-Read `AGENTS.md`, `README.md`, `index.html`, `server.py`, `sequenceproof.py`, `test_sequenceproof.py`, `docs/ARCHITECTURE.md`, and `docs/BUILD_LOG.md` before editing.
+Read `AGENTS.md`, `README.md`, `index.html`, `server.py`, `sequenceproof.py`, `test_sequenceproof.py`, `docs/ARCHITECTURE.md`, `docs/BUILD_LOG.md`, and `docs/SEQUENCEPROOF_UI_UX_DESIGN_SYSTEM.md` before editing. Treat the design-system file as the detailed visual and data-binding authority for this run.
 
 ## Mission
 
