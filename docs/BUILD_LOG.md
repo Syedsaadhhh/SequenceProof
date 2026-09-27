@@ -689,3 +689,26 @@ This section supersedes the earlier "REAL SANDBOX E2E BLOCKED" prerequisite stat
 - Publishing a minimal public fixture repository and committing/pushing require user authorization.
 - Docker Desktop is absent; installation may require administrator consent or a reboot.
 - No commit, push, merge, deployment, visibility change, or Docker installation was performed.
+
+
+## Run 2.5 final live Daytona E2E — 2026-09-27
+
+Observed after the full local regression suite and before final GitHub inspection.
+This is real hosted execution, not the fake provider and not the checkout preview.
+
+- Public execution fixture: `https://github.com/Syedsaadhhh/credscan-lite` on branch `sequenceproof-e2e-fixture`.
+- Immutable fixture commit: `4b40aedaa712357d8ec21d8c7d4336db8f443359`.
+- Provider: Daytona; real sandbox ID `31edf2dc-1234-4cf3-8819-f7dcab78252c`.
+- Input: 12-step `noisy_reproducing.json` trace.
+- Backend phases observed: `STARTING_SANDBOX` → `CHECKING_OUT_REPOSITORY` → `REPRODUCING_ORIGINAL` → `REDUCING` → `CONFIRMING` → `VERIFYING_FIXED`.
+- Learned failure ID: `STALE_ROLE_AUTHORIZATION`.
+- Reduction: 12 actions → 3 actions; 31 candidate attempts.
+- Confirmation: 5/5 fresh runs returned `REPRODUCED` with the exact same failure ID and five distinct run IDs.
+- Fixed implementation: `fixed_passes=true` (corrected implementation returned `NOT_REPRODUCED`).
+- Minimality: `one-minimal`, certified; 3 one-step-removal checks.
+- Execution log: 38 actual runner invocations (original + candidates + confirmations + fixed), each recorded with a unique run ID and SHA-256 trace hash.
+- Independent post-run Daytona listing: `SANDBOX_PRESENT_AFTER_RUN False`; `LIVE_SANDBOX_COUNT 0`. Cleanup therefore propagated successfully.
+- Full local suite immediately before publication: `Ran 87 tests in 68.040s — OK`.
+- Run 2.5 implementation commit pushed as `1f3841efad2dbe7f578f622475409202c0b63fba`; GitHub Actions run 19 completed with conclusion `success`.
+
+The public fixture is deliberately controlled synthetic application code used to prove the repository contract and cloud execution path. It is not represented as a production incident.
