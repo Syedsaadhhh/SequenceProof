@@ -1,10 +1,21 @@
-"""A small, executable stateful bug reproduction and trace reduction engine."""
+"""Checkout compatibility preview — a stateful bug reproduction fixture.
+
+This module implements the WRONG_CARD_CHARGED checkout scenario that serves
+as the built-in SequenceProof preview. It is NOT the product.
+
+The protocol-specific reduction logic (reduce_trace, confirm) is now delegated
+to the generic kernel in core.py, which knows nothing about checkout, cards,
+or specific failure IDs. The state machine, oracle, and domain logic remain here.
+
+The generic reduction kernel (core.py) must never import this module.
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-import math
 import time
 from typing import Any
+
+import core as _core
 
 ALLOWED = {"view_catalog", "add_item", "remove_item", "set_card", "begin_checkout", "retry_payment", "view_receipt", "refresh_cart"}
 MAX_STEPS = 40
@@ -143,88 +154,85 @@ def prune_orphaned_steps(candidate: list[dict[str, Any]]) -> tuple[list[dict[str
     return valid, pruned
 
 
-def reduce_trace(trace: list[dict[str, Any]], failure_id: str,
-                 budget: int = 250) -> tuple[list[dict[str, Any]], int, int, dict[str, Any]]:
-    """Bounded, validity-aware ddmin with an explicit one-minimal certificate."""
-    current = trace[:]
-    granularity = 2
-    attempts = 0
-    orphan_steps_pruned = 0
-    while len(current) >= 2 and attempts < budget:
-        chunk = math.ceil(len(current) / granularity)
-        reduced = False
-        for start in range(0, len(current), chunk):
-            candidate, pruned = prune_orphaned_steps(current[:start] + current[start + chunk:])
-            attempts += 1
-            if candidate and replay(candidate).get("failure_id") == failure_id:
-                current = candidate
-                orphan_steps_pruned += pruned
-                granularity = max(2, granularity - 1)
-                reduced = True
-                break
-            if attempts >= budget:
-                break
-        if not reduced:
-            if granularity >= len(current):
-                break
-            granularity = min(len(current), granularity * 2)
+def _orphan_pruning_oracle(candidate: list[dict[str, Any]]) -> dict[str, Any]:
+    """Oracle that applies checkout orphan-pruning before replaying.
 
-    # Verify the precise bounded guarantee used by the UI: no single retained
-    # step can be removed (including consequent orphan pruning) while preserving
-    # the exact failure ID. If a removable step is found, accept it and restart
-    # the certificate pass. Never exceed the shared candidate-check budget.
-    certificate_checks = 0
-    one_minimal = False
-    while current and attempts < budget:
-        removed = False
-        certificate_checks = 0
-        for index in range(len(current)):
-            if attempts >= budget:
-                break
-            candidate, pruned = prune_orphaned_steps(current[:index] + current[index + 1:])
-            attempts += 1
-            certificate_checks += 1
-            if candidate and replay(candidate).get("failure_id") == failure_id:
-                current = candidate
-                orphan_steps_pruned += pruned
-                removed = True
-                break
-        if removed:
-            continue
-        one_minimal = certificate_checks == len(current)
-        break
-
-    minimality = {
-        "kind": "one-minimal" if one_minimal else "bounded-local",
-        "certified": one_minimal,
-        "checks": certificate_checks,
-        "statement": (
-            "No single retained step can be removed while preserving the exact failure ID."
-            if one_minimal else
-            "The candidate-check budget ended before one-minimality could be certified."
-        ),
-    }
-    return current, attempts, orphan_steps_pruned, minimality
+    This is the domain-specific adapter that bridges the generic core kernel
+    to the checkout state machine. The kernel only calls this — it has no
+    knowledge of prune_orphaned_steps, Checkout, or WRONG_CARD_CHARGED.
+    """
+    repaired, _ = prune_orphaned_steps(candidate)
+    return replay(repaired)
 
 
 def analyze(raw_trace: Any) -> dict[str, Any]:
+    """Checkout compatibility preview — unchanged public contract.
+
+    The original trace is replayed directly (no orphan-pruning applied to it).
+    Reduction candidates use the pruning oracle as before.
+    Internally delegates reduction and confirmation to core.run_reduction.
+    """
     trace = validate_trace(raw_trace)
     start = time.perf_counter()
+
+    # Step 1: replay the original trace directly — no orphan-pruning applied.
+    # This preserves INVALID_TRACE / NOT_REPRODUCED for invalid originals.
     original = replay(trace)
     if original["status"] != "REPRODUCED":
-        return {"status": original["status"], "original": original, "original_steps": trace,
-                "reduced_steps": None, "trials": [], "duration_ms": round((time.perf_counter() - start) * 1000, 2)}
-    reduced, attempts, orphan_steps_pruned, minimality = reduce_trace(trace, original["failure_id"])
-    trials = [replay(reduced) for _ in range(5)]
-    verified = all(t["status"] == "REPRODUCED" and t["failure_id"] == original["failure_id"] for t in trials)
+        return {
+            "status": original["status"],
+            "failure_id": None,
+            "original": original,
+            "original_steps": trace,
+            "reduced_steps": None,
+            "trials": [],
+            "attempts": 0,
+            "orphan_steps_pruned": 0,
+            "minimality": None,
+            "fixed_result": None,
+            "fixed_passes": None,
+            "duration_ms": round((time.perf_counter() - start) * 1000, 2),
+        }
+
+    # Count orphan steps pruned so the original API contract is preserved.
+    orphan_steps_pruned = [0]
+
+    def _counting_oracle(candidate: list[dict[str, Any]]) -> dict[str, Any]:
+        repaired, pruned = prune_orphaned_steps(candidate)
+        if pruned:
+            orphan_steps_pruned[0] += pruned
+        return replay(repaired)
+
+    failure_id = original["failure_id"]
+
+    # Step 2: reduce via the generic kernel (pruning oracle for candidates).
+    reduced, attempts, minimality = _core.reduce_trace(
+        trace=trace,
+        failure_id=failure_id,
+        oracle=_counting_oracle,
+    )
+
+    # Step 3: confirm 5×.
+    verified, trials = _core.confirm_reduced(reduced, failure_id, _counting_oracle)
+
+    # Step 4: fix-check.
     fixed = replay(reduced, fixed=True)
-    return {"status": "REPRODUCED" if verified else "FLAKY", "failure_id": original["failure_id"],
-            "original": original, "original_steps": trace, "reduced_steps": reduced if verified else None,
-            "trials": [{"status": t["status"], "failure_id": t["failure_id"]} for t in trials],
-            "attempts": attempts, "orphan_steps_pruned": orphan_steps_pruned,
-            "minimality": minimality,
-            "fixed_result": fixed, "fixed_passes": fixed["status"] == "NOT_REPRODUCED",
-            "duration_ms": round((time.perf_counter() - start) * 1000, 2)}
+    fixed_passes = fixed["status"] == "NOT_REPRODUCED"
+
+    return {
+        "status": "REPRODUCED" if verified else "FLAKY",
+        "failure_id": failure_id,
+        "original": original,
+        "original_steps": trace,
+        "reduced_steps": reduced if verified else None,
+        "trials": trials,
+        "attempts": attempts,
+        "orphan_steps_pruned": orphan_steps_pruned[0],
+        "minimality": minimality,
+        "fixed_result": fixed,
+        "fixed_passes": fixed_passes,
+        "duration_ms": round((time.perf_counter() - start) * 1000, 2),
+    }
 
 
 SAMPLE = [

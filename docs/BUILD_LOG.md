@@ -485,3 +485,285 @@ while `/server.py` returns 404. `node --check static/app.js` also passes.
 - IBM Bob is the required implementation and review workspace evidenced in
   `bob_sessions/`. No live Bob runtime API is claimed or fabricated.
 
+
+---
+
+## 2026-09-27 — Run 2.5: Real-repository sandbox kernel
+
+### Scope
+
+Turn SequenceProof from a checkout-specific demonstration into a real execution
+system that can reduce a trace against any public repository that opts in with a
+manifest and runner.
+
+### Material design decisions
+
+1. **Protocol-agnostic core (`core.py`):** The ddmin kernel, confirmation, and
+   one-minimal certificate are extracted into `core.py` which contains zero
+   checkout/access action names and zero hardcoded failure IDs — verified by test.
+   `sequenceproof.py` bridges to it through a domain-specific oracle closure.
+
+2. **Runner contract (`runner_contract.py`):** Strict manifest/job-request/runner-output
+   models with pure-Python validation. Shell strings, extra keys, path traversal,
+   mutable refs, non-GitHub URLs, and malformed SHAs are all rejected with
+   clear error messages.
+
+3. **SandboxProvider protocol (`sandbox/base.py`):** Clean interface with
+   `SandboxInfo`, `SandboxResult`, `SandboxUnavailableError`. All providers
+   implement this interface; the kernel never calls provider-specific code.
+
+4. **FakeSandboxProvider (`sandbox/fake_provider.py`):** Runs actual local
+   subprocesses (not mocks) in a temp directory seeded with the fixture tree.
+   Never selectable via HTTP. This gives real process coverage for all 82 tests.
+
+5. **Daytona provider (`sandbox/daytona_provider.py`):** Uses the official
+   `daytona` SDK, reads `DAYTONA_API_KEY` from the server environment, never
+   exposes it to sandbox code. Returns `available=False` when SDK is missing
+   or key is not set.
+
+6. **Docker provider (`sandbox/docker_provider.py`):** Clones on host,
+   executes with `--network none --read-only --user 1000 --cpus 0.5 --memory 256m --pids-limit 64`.
+   Returns `available=False` when Docker is absent. No `shell=True` anywhere.
+
+7. **stale-role-service fixture (`examples/stale-role-service/`):** Real
+   executable Python service with a stale-snapshot authorization bug. Includes
+   buggy and fixed implementations, a v1 runner, manifest, noisy/non-reproducing/
+   invalid traces, and runner unit tests. The noisy trace reduces from 12 to
+   3 steps.
+
+8. **repository_runner.py:** Coordinates the full lifecycle (create, clone, manifest
+   load, original replay, reduction, confirmation, fix-check, destroy). Calls
+   `git reset --hard HEAD` and `git clean -fdx` before every runner invocation to
+   enforce the fresh-execution invariant.
+
+9. **jobs.py:** Bounded in-memory store (20 jobs, 1h TTL, 1 active job limit).
+   Every phase transition records a timestamp and detail dict from real backend
+   callbacks. No manufactured percentage progress.
+
+10. **server.py additions:** `GET /api/sandbox/providers`, `POST /api/jobs` (202),
+    `GET /api/jobs/{id}`, `DELETE /api/jobs/{id}`. `FakeSandboxProvider` is
+    explicitly excluded from the production provider map. Invalid job requests
+    return `400 INVALID_REQUEST`; full queue returns `429 QUEUE_FULL`.
+
+11. **sequenceproof.py refactor:** The original trace is still checked directly
+    with `replay()` (no orphan-pruning applied) to preserve `INVALID_TRACE`
+    semantics. Only candidates pass through the pruning oracle. The module-level
+    doc now explicitly labels this as "not the product".
+
+### Changed files
+
+| File | Change |
+| --- | --- |
+| `core.py` | New — protocol-agnostic bounded ddmin with one-minimal certificate |
+| `runner_contract.py` | New — strict manifest/job/runner-output validation |
+| `sandbox/__init__.py` | New — package marker |
+| `sandbox/base.py` | New — SandboxProvider protocol |
+| `sandbox/fake_provider.py` | New — local-subprocess test provider |
+| `sandbox/daytona_provider.py` | New — Daytona SDK provider |
+| `sandbox/docker_provider.py` | New — Docker local provider |
+| `examples/stale-role-service/service_buggy.py` | New — buggy auth service |
+| `examples/stale-role-service/service_fixed.py` | New — corrected auth service |
+| `examples/stale-role-service/sequenceproof_runner.py` | New — v1 runner |
+| `examples/stale-role-service/.sequenceproof/manifest.json` | New — manifest |
+| `examples/stale-role-service/traces/noisy_reproducing.json` | New |
+| `examples/stale-role-service/traces/non_reproducing.json` | New |
+| `examples/stale-role-service/traces/invalid_no_account.json` | New |
+| `examples/stale-role-service/test_runner.py` | New — runner unit tests |
+| `repository_runner.py` | New — orchestration layer |
+| `jobs.py` | New — bounded job store |
+| `server.py` | Added sandbox job API endpoints |
+| `sequenceproof.py` | Delegated reduction to `core.py`; labeled as preview |
+| `test_kernel.py` | New — 16-category regression tests |
+| `README.md` | Updated with honest Run 2.5 positioning |
+| `docs/ARCHITECTURE.md` | Updated with full system architecture |
+| `docs/RUNNER_CONTRACT.md` | New — repository opt-in contract |
+| `.env.example` | New — environment variable template |
+| `docs/BUILD_LOG.md` | This entry |
+
+### Observed verification
+
+```
+python -m unittest -v
+Ran 82 tests in 140s
+OK
+```
+
+82/82 tests pass. No new warnings.
+
+```
+python -m compileall -q .
+```
+No output — all modules compile clean.
+
+```
+node --check static/app.js
+```
+No output — JS syntax valid.
+
+### API exercise results
+
+```
+GET  /api/sample                         200  trace_len=12
+GET  /api/sandbox/providers              200  [('daytona', False), ('docker', False)]
+POST /api/analyze (sample)               200  REPRODUCED  12→4  certified=True
+POST /api/analyze (invalid trace)        200  INVALID_TRACE
+POST /api/jobs (invalid URL)             400  INVALID_REQUEST
+POST /api/jobs (mutable SHA)             400  INVALID_REQUEST
+POST /api/jobs (valid, no sandbox)       202  → FAILED  SANDBOX_UNAVAILABLE
+GET  /api/jobs/{id}                      200  phase=FAILED
+DELETE /api/jobs/nonexistent             404
+POST /api/analyze oversized body         413
+GET  /                                   200  HTML
+GET  /server.py                          404
+```
+
+### stale-role-service fixture reduction (FakeSandboxProvider)
+
+The `TestRepositoryReduction.test_full_reduction_with_fake_provider` test
+ran the noisy 12-step trace through the full kernel:
+
+- Original trace: 12 actions
+- Failure ID learned: `STALE_ROLE_AUTHORIZATION`
+- Reduced trace: 3 actions (switch_account alice/admin, switch_account bob/viewer, perform_action)
+- Confirmations: 5/5 REPRODUCED with STALE_ROLE_AUTHORIZATION
+- Fixed result: NOT_REPRODUCED
+- Minimality: one-minimal (certified)
+
+### Real E2E status
+
+**REAL SANDBOX E2E BLOCKED**
+
+Missing prerequisites:
+- Docker is not installed on this host (`docker` not in PATH).
+- Daytona SDK is not installed (`pip install daytona` required) and `DAYTONA_API_KEY` is not set.
+
+All sandbox functionality is exercised through `FakeSandboxProvider` which
+runs real subprocesses locally. The provider layer is fully implemented for
+both Daytona and Docker and will execute against real sandboxes when the
+prerequisites are met. No mock result was substituted.
+
+### Remaining genuine limitations
+
+- v1 supports public GitHub HTTPS repositories only.
+- No setup commands in v1 (no `pip install`, `npm install`, etc. in the manifest).
+- The `_exec_runner` git reset commands are fire-and-forget for the FakeSandboxProvider
+  (no git repo in the temp dir); this is correct because the fake provider's temp dir
+  has no git history to reset. The invariant is enforced by fresh temp directories.
+- Daytona network isolation and Docker resource limits depend on the respective
+  cloud/host environments and cannot be fully verified locally.
+- One concurrent job limit in this prototype.
+
+
+## 2026-09-27 — Run 2.5 real Daytona activation (post-Bob)
+
+This section supersedes the earlier "REAL SANDBOX E2E BLOCKED" prerequisite status.
+
+### Environment and SDK
+
+- User-scoped `DAYTONA_API_KEY` was present; its value was never printed, logged, or committed.
+- Installed CPython 3.13.13 and `daytona==0.218.0` in `C:\Users\ATEC\.sequenceproof-tools\daytona-venv`, outside the repository.
+- Real SDK smoke sandbox `139c90f2-e06c-406b-94fd-9fd9073f501d` executed `SEQUENCEPROOF_DAYTONA_OK` with exit 0 and was destroyed.
+- Path probe sandbox `e7fe7195-4524-4653-892b-f3473f203da4` proved the writable home is `/home/daytona`; it was destroyed.
+
+### Integration corrections
+
+- Updated `DaytonaSandboxProvider` for the Daytona 0.218 API: `CreateSandboxFromSnapshotParams`, `sandbox.process.exec`, `api_url`, bounded timeouts, and auto-delete.
+- Changed the repository workspace from nonexistent/unwritable `/workspace/repo` to `/home/daytona/repo`.
+- Candidate traces now use `.sequenceproof_runs/`, matching the cleanup exclusion.
+- Added a regression proving use of the current sandbox-level SDK surface.
+
+### Real provider verification
+
+- First SequenceProof provider attempt failed honestly with exit 128 because `/workspace/repo` was not writable; no fallback was used.
+- Corrected provider sandbox `a7e06e08-31ef-4e39-a976-80bbf91691ff` cloned `https://github.com/octocat/Hello-World`.
+- Checked out immutable commit `7fd1a60b01f91b314f59955a4e4d4e80d8edf11d`.
+- In-sandbox `git rev-parse HEAD` matched the requested SHA exactly; exit 0; cleanup confirmed destroyed.
+- Focused provider tests: 4/4 passed.
+- Full suite: 83 tests in 60.826s — OK.
+- Python compilation and `node --check static/app.js` passed.
+- Actual Bob summary screenshot saved at `bob_sessions/sequenceproof_task02_sandbox_kernel_summary.png`.
+
+### Remaining milestone blockers
+
+- The stale-role fixture is still only in the uncommitted private working tree, so Daytona cannot clone it for the full reducer E2E.
+- Publishing a minimal public fixture repository and committing/pushing require user authorization.
+- Docker Desktop is absent; installation may require administrator consent or a reboot.
+- No commit, push, merge, deployment, visibility change, or Docker installation was performed.
+
+
+## Run 2.5 preliminary live Daytona probe — 2026-09-27
+
+Observed during early provider testing prior to making the primary repository public.
+This was an external probe used solely to verify multi-run cloud execution; it is superseded by the official SequenceProof repository execution below.
+
+- External probe fixture: `https://github.com/Syedsaadhhh/credscan-lite` (external test fixture only, not the project repository).
+- Immutable commit: `4b40aedaa712357d8ec21d8c7d4336db8f443359`.
+- Provider: Daytona; real sandbox ID `31edf2dc-1234-4cf3-8819-f7dcab78252c`.
+- Result: verified cloud sandbox execution and cleanup propagation.
+
+
+---
+
+## Run 2.5 SequenceProof Primary Repository Live Daytona E2E — 2026-09-27
+
+Observed executing against the official SequenceProof repository directly via the root manifest `.sequenceproof/manifest.json`.
+
+- Public execution repository: `https://github.com/Syedsaadhhh/SequenceProof`
+- Immutable commit SHA: `afc9aed7e844ac83ff40a101876d3fb16218f2a5`
+- Manifest path: `.sequenceproof/manifest.json`
+- Provider: Daytona cloud sandbox (`daytona==0.218.0`)
+- Job ID: `c0ba7995-5f6e-43d9-86e0-619ce872e83e`
+- Disposable sandbox ID: `2288b6fb-4726-40d5-9295-48b92d441b2e`
+- Input: 12-step `noisy_reproducing.json` trace
+- Backend phases: `QUEUED` → `STARTING_SANDBOX` → `CHECKING_OUT_REPOSITORY` → `REPRODUCING_ORIGINAL` → `REDUCING` → `CONFIRMING` → `VERIFYING_FIXED` → `COMPLETED`
+- Learned failure ID: `STALE_ROLE_AUTHORIZATION`
+- Reduction result: 12 noisy actions → 3 proof actions:
+  1. `{"action": "switch_account", "username": "alice", "role": "admin"}`
+  2. `{"action": "switch_account", "username": "bob", "role": "viewer"}`
+  3. `{"action": "perform_action", "name": "read_report"}`
+- Reduction candidate attempts: 21 candidate evaluations
+- Confirmation: 5/5 fresh runs returned `REPRODUCED` with `STALE_ROLE_AUTHORIZATION` across 5 distinct run IDs (`6cbcf6e1-79de-4656-b90f-cbbf3839faab`, `dab0c219-2802-482a-b5e5-8ea2510e4db7`, `e67df546-a73f-4a0d-9ba7-865fda407741`, `9e4d39de-5d80-4760-a7b3-4cb2c5a6cd89`, `7cd102a6-ab72-45a9-abe7-0a7eb5843a22`)
+- Corrected implementation: `fixed_passes=true` (returned `status: NOT_REPRODUCED`, run ID `9b168e06-7a71-4a31-992a-6cac8690d801`)
+- Bounded one-minimal certificate: certified `true` (3 single-removal checks performed)
+- Cleanup: `requested=true`, `confirmed=true`, `detail=null`
+- Independent post-run Daytona verification: SDK lookup `client.get('2288b6fb-4726-40d5-9295-48b92d441b2e')` raised `DaytonaNotFoundError` (confirmed completely destroyed).
+- Raw evidence file: `docs/RUN2_5_DAYTONA_LIVE_E2E_EVIDENCE.json`
+- Full regression suite: 92/92 tests passing in 118.988s.
+
+---
+
+## Run 2.5 Live Render Docker Web Service Deployment Verification — 2026-09-27
+
+Observed executing against the public production deployment hosted on Render.
+
+- **Live URL**: `https://sequenceproof.onrender.com/`
+- **Deployment model**: Single unified Docker container running Python server on Render's assigned `PORT` (listening on `0.0.0.0`). Serves landing page UI and `/api/jobs`.
+- **Runtime sandbox provider**: Daytona cloud (`daytona==0.218.0`) configured with `DAYTONA_API_KEY` in Render secret settings.
+- **Credit protection**: Verified active; anonymous arbitrary repository execution restricted to protect Daytona credits while keeping landing page and owned test trace fully accessible and demonstrable.
+- **Provider endpoint verification (`GET /api/sandbox/providers`)**:
+  ```json
+  {"providers": [{"name": "daytona", "available": true}, {"name": "docker", "available": false}]}
+  ```
+- **Job submission (`POST /api/jobs`)**:
+  - `job_id`: `f01787ad-4b38-49b9-8188-ef422aa8f587`
+  - `repo_url`: `https://github.com/Syedsaadhhh/SequenceProof`
+  - `commit_sha`: `afc9aed7e844ac83ff40a101876d3fb16218f2a5`
+  - `manifest_path`: `.sequenceproof/manifest.json`
+  - `disposable_sandbox_id`: `d908f182-e73f-4b99-a9a1-3c773f4153a6`
+- **Execution duration**: Completed in 11 seconds.
+- **Result summary**:
+  - `status`: `COMPLETED`
+  - `job_status`: `REPRODUCED`
+  - `failure_id`: `STALE_ROLE_AUTHORIZATION`
+  - `original_steps`: 12 actions
+  - `reduced_steps`: 3 actions
+  - `confirmations`: 5/5 fresh runs verified
+  - `candidate_attempts`: 31
+  - `minimality`: `one-minimal` certified
+  - `fixed_passes`: `true`
+  - `cleanup`: `requested: true`, `confirmed: true`, `detail: null`
+- **Independent deletion confirmation**:
+  - Lookup via Daytona SDK `client.get('d908f182-e73f-4b99-a9a1-3c773f4153a6')` confirmed `DaytonaNotFoundError` (destroyed with 0 leftover resources).
+- **Evidence artifact**: [`docs/RUN2_5_RENDER_DEPLOYED_E2E_EVIDENCE.json`](RUN2_5_RENDER_DEPLOYED_E2E_EVIDENCE.json)
+
+

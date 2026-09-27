@@ -30,16 +30,21 @@ class ServerContractTests(unittest.TestCase):
     def test_frontend_and_allowlisted_static_assets_are_served(self):
         status, headers, body = self.get("/")
         self.assertEqual(status, 200)
+        # The product page is now repository-first; repository.js is the
+        # only script loaded.  app.js is no longer referenced in the HTML
+        # (checkout demo removed from product).
         self.assertIn(b'/static/styles.css', body)
-        self.assertIn(b'/static/app.js', body)
+        self.assertIn(b'/static/repository.js', body)
+        self.assertNotIn(b'/static/app.js', body)
 
         _, css_headers, css = self.get("/static/styles.css")
-        _, js_headers, js = self.get("/static/app.js")
+        _, js_headers, js = self.get("/static/repository.js")
         self.assertTrue(css_headers["Content-Type"].startswith("text/css"))
         self.assertTrue(js_headers["Content-Type"].startswith("text/javascript"))
         self.assertGreater(len(css), 1000)
         self.assertGreater(len(js), 1000)
         self.assertEqual(css_headers["X-Content-Type-Options"], "nosniff")
+        self.assertEqual(js_headers["X-Content-Type-Options"], "nosniff")
 
     def test_unallowlisted_source_file_is_not_exposed(self):
         with self.assertRaises(HTTPError) as context:

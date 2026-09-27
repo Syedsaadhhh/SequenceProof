@@ -8,147 +8,99 @@
 </head>
 <body>
   <div class="shell">
-    <!-- Top bar -->
     <header class="top-bar">
       <div class="brand-wrap">
         <a href="/" class="brand">Sequence<span>Proof</span></a>
         <span class="brand-descriptor">Executable stateful debugging</span>
       </div>
       <div class="top-badges">
-        <span class="badge badge-sample">Synthetic sample</span>
-        <span class="badge badge-bounded" title="Analysis bounds: ≤40 actions, ≤250 candidate checks, ≤32 KiB">Bounded analysis</span>
+        <span class="badge badge-bounded" title="Analysis bounds: ≤40 actions, ≤250 candidate checks, ≤32 KiB">Bounded execution</span>
+        <span class="badge badge-bounded">Pinned Git commits</span>
       </div>
     </header>
 
-    <!-- Hero -->
-    <div class="hero">
-      <div class="hero-eyebrow">From noisy trace to executable proof</div>
-      <h1>Find the few actions that actually reproduce the same failure.</h1>
-      <p class="hero-sub">Replay a stateful bug from fresh state, eliminate noise without reordering, and prove the fix stops the exact same failure.</p>
-      
-      <!-- Honest neutral workflow strip before execution -->
-      <div class="equation-strip" id="hero-strip">
+    <section class="hero">
+      <div class="hero-eyebrow">Repository reduction with execution evidence</div>
+      <h1>Reduce a failing action trace inside a disposable sandbox.</h1>
+      <p class="hero-sub">SequenceProof checks out one immutable commit, replays every candidate from fresh state, preserves the exact failure ID, confirms the reduced trace five times, and executes the corrected path independently.</p>
+      <div class="equation-strip">
         <div class="equation-left">
-          <span class="equation-label" id="equation-caption">Trace verification workflow</span>
-          <div class="equation-flow" id="equation-display">
-            <span class="eq-item">Ready to verify this trace</span>
+          <span class="equation-label">Verification contract</span>
+          <div class="equation-flow">
+            <span class="eq-item">Pinned checkout</span>
             <span class="eq-arrow">·</span>
-            <span class="eq-item">Fresh-state replay</span>
+            <span class="eq-item">Fresh replay</span>
             <span class="eq-arrow">·</span>
-            <span class="eq-item">Exact failure identity</span>
+            <span class="eq-item">Exact failure</span>
             <span class="eq-arrow">·</span>
-            <span class="eq-item">Fix verification</span>
+            <span class="eq-item">Fix check</span>
           </div>
-        </div>
-        <div class="equation-actions">
-          <button type="button" class="btn btn-primary" id="hero-analyze-btn">
-            <svg class="btn-icon" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-              <path d="M4 2.5l9 5.5-9 5.5v-11z"/>
-            </svg>
-            Analyze trace
-          </button>
-          <button type="button" class="btn btn-secondary" id="hero-reset-btn">Reset sample</button>
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- Workspace Grid -->
-    <main class="workspace-grid" id="workspace-main">
-      <!-- Zone 1: Trace Workspace (Left) -->
-      <section class="panel trace-panel" aria-labelledby="heading-trace">
-        <div class="panel-head">
-          <h2 class="panel-title" id="heading-trace"><span class="num">01 /</span> Trace workspace</h2>
-          <span class="badge badge-sample">Owned sample</span>
-        </div>
-
-        <!-- Dynamic Issue Context from /api/sample -->
-        <div class="sample-issue-card">
-          <div class="sample-issue-title" id="sample-title">Card changed during checkout retry</div>
-          <div class="sample-issue-text" id="sample-issue">Loading sample issue…</div>
-        </div>
-
-        <!-- View Switcher Tabs -->
-        <div class="view-tabs">
-          <div class="tab-nav" role="tablist" aria-label="Trace view mode">
-            <button type="button" class="tab-btn active" id="tab-timeline-btn" role="tab" aria-selected="true" aria-controls="view-timeline">
-              Readable timeline
-              <span class="tab-badge" id="timeline-count-badge">12</span>
-            </button>
-            <button type="button" class="tab-btn" id="tab-editor-btn" role="tab" aria-selected="false" aria-controls="view-editor">
-              JSON editor
-            </button>
+    <main>
+      <section class="repo-panel" aria-labelledby="repo-heading">
+        <div class="repo-heading">
+          <div>
+            <span class="repo-eyebrow">REAL EXECUTION</span>
+            <h2 id="repo-heading">Repository proof workspace</h2>
+            <p>Run an owned reproducing trace against an opt-in public GitHub repository at an immutable commit. Every displayed result comes from backend execution.</p>
           </div>
-          <span class="editor-status-indicator" id="json-status">Valid JSON</span>
+          <span id="repo-provider" class="repo-provider" role="status">Checking sandbox availability…</span>
         </div>
 
-        <!-- View 1: Readable Timeline -->
-        <div class="readable-timeline-view active" id="view-timeline" role="tabpanel" aria-labelledby="tab-timeline-btn">
-          <div class="timeline-row-list" id="timeline-rows"></div>
+        <div class="repo-form">
+          <label>Public GitHub HTTPS URL <input id="repo-url" type="url" placeholder="https://github.com/owner/repository" autocomplete="off"></label>
+          <label>Immutable commit SHA <input id="repo-sha" type="text" minlength="40" maxlength="40" pattern="[0-9a-f]{40}" placeholder="40 lowercase hexadecimal characters" spellcheck="false" autocomplete="off"></label>
+          <label>Manifest path <input id="repo-manifest" type="text" value=".sequenceproof/manifest.json" spellcheck="false"></label>
         </div>
 
-        <!-- View 2: JSON Editor -->
-        <div class="editor-view" id="view-editor" role="tabpanel" aria-labelledby="tab-editor-btn">
-          <label for="trace-textarea" class="editor-label">Ordered actions · editable JSON</label>
-          <textarea id="trace-textarea" class="editor-textarea" spellcheck="false" aria-label="Action trace JSON"></textarea>
-          <div id="editor-error-msg" class="editor-error-banner" role="alert" style="display: none;">
-            <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true">
-              <path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 3.5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 018 4.5zm0 7a.9.9 0 110-1.8.9.9 0 010 1.8z"/>
-            </svg>
-            <span id="editor-error-text">JSON parse error</span>
+        <div class="repo-trace-head">
+          <label for="repo-trace">Reproducing trace · JSON array · max 40 actions</label>
+          <button id="repo-load-example" type="button" class="btn btn-secondary">Load executable test trace</button>
+        </div>
+        <textarea id="repo-trace" class="repo-trace" spellcheck="false" placeholder='[{"action":"your_action"}]'></textarea>
+
+        <div class="repo-actions">
+          <button id="repo-submit" type="button" class="btn btn-primary">Execute in disposable sandbox</button>
+          <button id="repo-cancel" type="button" class="btn btn-secondary" disabled>Cancel queued job</button>
+          <button id="repo-download" type="button" class="btn btn-secondary" disabled>Download execution evidence</button>
+        </div>
+
+        <p id="repo-status" class="repo-status" role="status" aria-live="polite">No repository job has been submitted.</p>
+        <div class="repo-meta">
+          <span>Phase: <strong id="repo-phase">NOT_STARTED</strong></span>
+          <span>Job: <code id="repo-job-id">—</code></span>
+          <span>Provider: <code id="repo-provider-used">—</code></span>
+        </div>
+
+        <div class="repo-result" aria-live="polite">
+          <h3>Server execution result</h3>
+          <p id="repo-summary" class="repo-summary">Awaiting an actual sandbox execution.</p>
+          <div class="repo-result-meta">
+            <span>Failure: <code id="repo-failure">—</code></span>
+            <span>Commit: <code id="repo-commit">—</code></span>
           </div>
-        </div>
-
-        <!-- Controls -->
-        <div class="workspace-actions">
-          <button type="button" class="btn btn-primary" id="run-btn">
-            <svg class="btn-icon" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-              <path d="M4 2.5l9 5.5-9 5.5v-11z"/>
-            </svg>
-            Analyze trace
-          </button>
-          <button type="button" class="btn btn-secondary" id="reset-btn">Reset sample</button>
-          <span class="shortcut-hint">Ctrl + Enter to analyze</span>
-        </div>
-
-        <p class="scope-hint">
-          Dependent actions orphaned by a deletion are pruned; every candidate then runs from fresh state. An invalid trace or unrelated exception never counts as reproduction evidence.
-        </p>
-      </section>
-
-      <!-- Zone 2: Proof Workspace (Right) -->
-      <section class="panel proof-panel" aria-labelledby="heading-proof">
-        <div class="panel-head">
-          <h2 class="panel-title" id="heading-proof"><span class="num">02 /</span> Execution proof</h2>
-          <span class="phase-tag phase-ready" id="phase-badge">Ready</span>
-        </div>
-
-        <!-- Dynamic Result Container -->
-        <div id="result-container">
-          <!-- Initial Honest Ready State -->
-          <div class="ready-state">
-            <div class="ready-icon" aria-hidden="true">⌁</div>
-            <h3 class="ready-title">Ready to verify this trace</h3>
-            <p class="ready-desc">Analyze this stateful checkout sequence to determine whether it reproduces a failure, can be reduced to a smaller valid sequence, and whether the corrected implementation stops it.</p>
-            <div class="ready-preview-card">
-              <div class="ready-preview-header">Verification protocol</div>
-              <div class="ready-preview-equation">Every candidate replay starts from fresh state and must preserve the exact observed failure ID.</div>
-            </div>
+          <div class="repo-evidence-grid">
+            <details open><summary>Backend phase events</summary><div id="repo-events" class="repo-rows"></div></details>
+            <details><summary>Runner invocations, hashes, and run IDs</summary><div id="repo-executions" class="repo-rows"></div></details>
+            <details><summary>Five independent confirmation results</summary><div id="repo-confirmations" class="repo-rows"></div></details>
+            <details><summary>Original executable evidence</summary><pre id="repo-original">—</pre></details>
+            <details><summary>Reduced proof actions</summary><pre id="repo-reduced">—</pre></details>
+            <details><summary>Bounded one-minimal certificate</summary><pre id="repo-certificate">—</pre></details>
           </div>
         </div>
+
+        <p class="repo-disclaimer">SequenceProof accepts only opt-in public GitHub repositories and immutable commit SHAs. The included test trace executes the owned stale-role fixture in this repository; no provider state, candidate result, confirmation, fix result, or cleanup claim is precomputed.</p>
       </section>
     </main>
 
-    <!-- Footer & Scope note -->
     <footer class="foot-note">
-      This result is locally reduced within a bounded search (≤40 actions, ≤250 checks). Every accepted candidate is replayed from fresh state and must preserve the exact observed failure ID. The sample uses synthetic data. IBM Bob IDE work and task screenshots are maintained in <code>bob_sessions/</code> as build workflow evidence; this interface does not claim a live Bob runtime integration.
+      Results are locally reduced within bounded search. Every accepted candidate starts from the pinned commit and must reproduce the original failure ID.
     </footer>
   </div>
 
-  <!-- Accessible live region for screen readers -->
-  <div id="a11y-announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
-
-  <script src="/static/app.js"></script>
+  <script src="/static/repository.js"></script>
 </body>
 </html>
-
-

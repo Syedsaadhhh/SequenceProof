@@ -1,0 +1,14 @@
+[
+  {"action": "view_dashboard"},
+  {"action": "switch_account", "username": "alice", "role": "admin"},
+  {"action": "view_dashboard"},
+  {"action": "view_dashboard"},
+  {"action": "switch_account", "username": "bob", "role": "viewer"},
+  {"action": "view_dashboard"},
+  {"action": "view_dashboard"},
+  {"action": "perform_action", "name": "read_report"},
+  {"action": "view_dashboard"},
+  {"action": "logout"},
+  {"action": "view_dashboard"},
+  {"action": "logout"}
+]
