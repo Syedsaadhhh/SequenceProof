@@ -159,13 +159,16 @@ class DaytonaSandboxProvider:
             )
 
     def destroy_sandbox(self, sandbox_info: SandboxInfo) -> None:
+        """Attempt to delete the Daytona sandbox.
+
+        Raises on failure so repository_runner.py can record
+        cleanup.confirmed=False rather than silently claiming success.
+        The orchestration layer's finally block catches the exception.
+        """
         if not self.available:
             return
-        try:
-            sandbox = self._client.get(sandbox_info.sandbox_id)
-            self._client.delete(sandbox)
-        except Exception:
-            pass  # Must not raise in finally.
+        sandbox = self._client.get(sandbox_info.sandbox_id)
+        self._client.delete(sandbox)
 
     def write_file(
         self,

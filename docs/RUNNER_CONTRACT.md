@@ -115,10 +115,10 @@ candidate to be accepted.
 
 Every runner invocation (original, candidate, confirmation, fixed):
 
-1. Starts from a process created by the kernel (`subprocess.run`, no reuse).
+1. Starts from a fresh runner process created by the selected provider (no reuse).
 2. Receives a unique `SEQUENCEPROOF_TRACE_PATH` and `SEQUENCEPROOF_RUN_ID`.
-3. Runs after `git reset --hard HEAD && git clean -fdx` to restore the
-   repository to the pinned commit.
+3. Runs after `git reset --hard <pinned-commit-sha> && git clean -fdx`
+   to restore the repository to the immutable commit, even if a previous runner modified HEAD.
 4. Receives no result from any prior invocation.
 5. Has bounded wall time and output size.
 

@@ -626,6 +626,29 @@ class TestProviderUnavailability(unittest.TestCase):
         self.assertEqual(provider._client.deleted, "sdk-sandbox-1")
         self.assertTrue(any("git clone" in command for command, _ in calls))
 
+    def test_daytona_destroy_sandbox_raises_on_delete_failure(self):
+        """destroy_sandbox must propagate a deletion failure.
+
+        Before this fix, DaytonaSandboxProvider swallowed the exception and
+        returned None, causing repository_runner.py to record
+        cleanup.confirmed=True even when deletion failed.
+        """
+        class _FailDelete:
+            def get(self, sandbox_id):
+                class _SB:
+                    id = sandbox_id
+                return _SB()
+
+            def delete(self, sandbox):
+                raise RuntimeError("Daytona API: workspace not found")
+
+        from sandbox.base import SandboxInfo as _SI
+        provider = DaytonaSandboxProvider()
+        provider._client = _FailDelete()
+        info = _SI("del-fail-1", "daytona", "/workspace")
+        with self.assertRaises(RuntimeError, msg="destroy_sandbox must raise on deletion failure"):
+            provider.destroy_sandbox(info)
+
     def test_docker_provider_not_available_without_docker(self):
         """DockerSandboxProvider.available matches the actual Docker presence."""
         import shutil
@@ -708,6 +731,69 @@ class TestCleanupInEveryPath(unittest.TestCase):
         self.assertTrue(tmp_parent.exists())
         provider.destroy_sandbox(info)
         self.assertFalse(tmp_parent.exists(), "temp dir must be removed after destroy")
+
+    def test_cleanup_status_included_in_result_dict(self):
+        """result['cleanup'] must report truthful sandbox destruction status.
+
+        When the sandbox is successfully destroyed, cleanup.confirmed must be True.
+        When destruction raises, cleanup.confirmed must be False and detail non-null.
+        The caller must never have to trust that destruction happened — it must
+        be able to read cleanup.confirmed from the result.
+        """
+        trace = json.loads((FIXTURE_DIR / "traces" / "noisy_reproducing.json").read_text())
+
+        # Normal path: cleanup.confirmed should be True.
+        provider_ok = FakeSandboxProvider(fixture_root=FIXTURE_DIR)
+        result_ok = run_repository_analysis(
+            provider=provider_ok,
+            repo_url="https://github.com/x/y",
+            commit_sha="a" * 40,
+            manifest_path=".sequenceproof/manifest.json",
+            trace=trace,
+        )
+        self.assertIn("cleanup", result_ok, "cleanup key must be present in result")
+        self.assertTrue(result_ok["cleanup"]["requested"])
+        self.assertTrue(result_ok["cleanup"]["confirmed"],
+                        "cleanup.confirmed must be True after successful destruction")
+        self.assertIsNone(result_ok["cleanup"]["detail"])
+
+        # Failure path: destroy_sandbox raises; cleanup.confirmed must be False.
+        class _TrackingProvider:
+            name = "tracking"
+            available = True
+
+            def create_sandbox(self, repo_url, commit_sha):
+                return SandboxInfo("fail-del-1", "tracking", str(FIXTURE_DIR))
+
+            def run_command(self, info, argv, env, timeout_seconds):
+                from sandbox.base import SandboxResult
+                return SandboxResult(exit_code=0, stdout='{"schema_version":1,"status":"NOT_REPRODUCED","failure_id":null}', stderr="", duration_seconds=0.01)
+
+            def write_file(self, info, path, content):
+                import tempfile, os
+                tmp = tempfile.mktemp(suffix=".json")
+                with open(tmp, "wb") as f:
+                    f.write(content)
+                return tmp
+
+            def read_file(self, info, path):
+                return (FIXTURE_DIR / ".sequenceproof" / "manifest.json").read_bytes()
+
+            def destroy_sandbox(self, info):
+                raise RuntimeError("simulated delete failure")
+
+        result_fail = run_repository_analysis(
+            provider=_TrackingProvider(),
+            repo_url="https://github.com/x/y",
+            commit_sha="a" * 40,
+            manifest_path=".sequenceproof/manifest.json",
+            trace=trace,
+        )
+        self.assertIn("cleanup", result_fail)
+        self.assertTrue(result_fail["cleanup"]["requested"])
+        self.assertFalse(result_fail["cleanup"]["confirmed"],
+                         "cleanup.confirmed must be False when destruction raises")
+        self.assertIn("simulated delete failure", result_fail["cleanup"]["detail"])
 
 
 # ---------------------------------------------------------------------------

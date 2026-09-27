@@ -47,7 +47,8 @@
       el("repo-trace").value = JSON.stringify(data.trace, null, 2);
       if (data.repo_url) el("repo-url").value = data.repo_url;
       if (data.commit_sha) el("repo-sha").value = data.commit_sha;
-      status("Synthetic input fixture loaded. It is not an execution result.");
+      if (data.manifest_path) el("repo-manifest").value = data.manifest_path;
+      status("Executable test trace loaded. Submit it to create real sandbox evidence.");
     } catch (err) {
       status("Could not load fixture: " + err.message, true);
     }
@@ -66,7 +67,7 @@
     }
     const result = job.result;
     if (!result) {
-      setText("repo-summary", terminal.has(job.phase) ? "Waiting for final server result…" : "Waiting for server execution evidence…");
+      setText("repo-summary", job.phase === "CANCELLED" ? "Cancelled by backend before execution." : terminal.has(job.phase) ? "Waiting for final server result…" : "Waiting for server execution evidence…");
       return;
     }
     el("repo-download").disabled = false;
@@ -118,7 +119,7 @@
       const job = await res.json();
       if (job.job_id !== state.jobId) return;
       render(job);
-      if (terminal.has(job.phase) && job.result) {
+      if (terminal.has(job.phase) && (job.result || job.phase === "CANCELLED")) {
         stopPolling();
         status(job.phase === "COMPLETED" ? "Job finished; inspect server evidence." : "Job ended: " + job.phase, job.phase !== "COMPLETED");
       }

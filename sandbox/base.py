@@ -126,7 +126,10 @@ class SandboxProvider(Protocol):
     def destroy_sandbox(self, sandbox_info: SandboxInfo) -> None:
         """Destroy the sandbox and clean up all resources.
 
-        Must be called in finally; must not raise even after a prior failure.
+        Must be called in a finally block by the orchestration layer.
+        Providers should raise on failure so the caller can record an
+        honest cleanup status.  The orchestration finally catches any
+        exception — providers must never swallow deletion failures silently.
         """
         ...
 

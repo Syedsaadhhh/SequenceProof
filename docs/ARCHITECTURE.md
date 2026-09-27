@@ -37,7 +37,9 @@ flowchart TD
 | `test_server.py` | HTTP asset allowlist and API contract tests. |
 | `index.html` | Semantic application shell. |
 | `static/styles.css` | Enterprise visual system. |
-| `static/app.js` | API state handling, result rendering, JSON download. |
+| `static/app.js` | Synthetic checkout compatibility preview. |
+| `static/repository.js` | Real provider discovery, POST /api/jobs, server-backed polling, evidence and JSON export. |
+| `test_repository_ui.py` | HTTP integration using real local runner subprocesses plus UI asset, input validation and concurrency tests. |
 
 ## Architectural boundary
 
@@ -60,7 +62,7 @@ Repository
 SequenceProof
   1. validate manifest
   2. for each candidate trace:
-       a. git reset --hard HEAD && git clean -fdx  (restore state)
+       a. git reset --hard <pinned SHA> && git clean -fdx  (restore exact state)
        b. write candidate JSON to unique $SEQUENCEPROOF_TRACE_PATH
        c. set unique $SEQUENCEPROOF_RUN_ID
        d. exec manifest.runner.argv (no shell)
@@ -79,10 +81,10 @@ SequenceProof
 | Output limit | 64 KiB per runner invocation |
 | Payload limit | 32 KiB request |
 | Action limit | 40 trace actions |
-| Shell injection | `argv` is a list; no `shell=True` at any level |
-| Manifest paths | `..` and absolute paths rejected |
+| Shell injection | Strictly validated manifest argv and manifest paths; Daytona executes sanitized commands inside the disposable sandbox, not on the host |
+| Manifest paths | Strict relative-path character allowlist; shell metacharacters, absolute paths and `..` rejected |
 | Provider selection | `FakeSandboxProvider` is never selectable via HTTP |
-| Cleanup | `destroy_sandbox` called in every `finally` block |
+| Cleanup | `destroy_sandbox` requested from `finally` after every created sandbox; external deletion confirmation is recorded separately |
 
 **Documented boundaries that cannot be fully enforced in v1:**
 - Daytona network isolation depends on the Daytona cloud environment.

@@ -259,6 +259,7 @@ def run_repository_analysis(
 
     start = time.perf_counter()
     sandbox_info: SandboxInfo | None = None
+    _result: dict[str, Any] | None = None
 
     try:
         # Phase 1: create sandbox.
@@ -271,27 +272,28 @@ def run_repository_analysis(
             "repo_url": repo_url,
             "commit_sha": commit_sha,
         })
+        def _fail(error_code: str, detail: str, extra: dict | None = None) -> dict[str, Any]:
+            nonlocal _result
+            _result = {
+                "status": "FAILED",
+                "error_code": error_code,
+                "detail": detail,
+                "provider": provider.name,
+                "sandbox_id": sandbox_info.sandbox_id if sandbox_info else None,
+            }
+            if extra:
+                _result.update(extra)
+            return _result
+
         try:
             manifest_bytes = provider.read_file(sandbox_info, manifest_path)
         except (OSError, FileNotFoundError) as exc:
-            return {
-                "status": "FAILED",
-                "error_code": "MANIFEST_NOT_FOUND",
-                "detail": f"Cannot read manifest at {manifest_path}: {exc}",
-                "provider": provider.name,
-                "sandbox_id": sandbox_info.sandbox_id,
-            }
+            return _fail("MANIFEST_NOT_FOUND", f"Cannot read manifest at {manifest_path}: {exc}")
         try:
             manifest_raw = json.loads(manifest_bytes)
             manifest = parse_manifest(manifest_raw)
         except (json.JSONDecodeError, ValueError) as exc:
-            return {
-                "status": "FAILED",
-                "error_code": "MANIFEST_INVALID",
-                "detail": str(exc),
-                "provider": provider.name,
-                "sandbox_id": sandbox_info.sandbox_id,
-            }
+            return _fail("MANIFEST_INVALID", str(exc))
 
         # Phase 3: reproduce original.
         _phase("REPRODUCING_ORIGINAL", {"trace_length": len(trace)})
@@ -305,23 +307,13 @@ def run_repository_analysis(
         original_result = oracle(trace)
 
         if original_result["status"] == "EXECUTION_ERROR":
-            return {
-                "status": "FAILED",
-                "error_code": "RUNNER_EXECUTION_ERROR",
-                "detail": original_result.get("detail", "runner error"),
-                "original": original_result,
-                "provider": provider.name,
-                "sandbox_id": sandbox_info.sandbox_id,
-            }
+            return _fail("RUNNER_EXECUTION_ERROR",
+                         original_result.get("detail", "runner error"),
+                         {"original": original_result})
         if original_result["status"] != "REPRODUCED":
-            return {
-                "status": "FAILED",
-                "error_code": "ORIGINAL_NOT_REPRODUCED",
-                "detail": f"Original trace status: {original_result['status']}",
-                "original": original_result,
-                "provider": provider.name,
-                "sandbox_id": sandbox_info.sandbox_id,
-            }
+            return _fail("ORIGINAL_NOT_REPRODUCED",
+                         f"Original trace status: {original_result['status']}",
+                         {"original": original_result})
 
         failure_id = original_result["failure_id"]
 
@@ -356,8 +348,7 @@ def run_repository_analysis(
             fixed_passes = None  # NOT_CHECKED
 
         duration_ms = round((time.perf_counter() - start) * 1000, 2)
-
-        return {
+        _result = {
             "status": "COMPLETED",
             "job_status": "REPRODUCED" if verified else "FLAKY",
             "failure_id": failure_id,
@@ -377,25 +368,41 @@ def run_repository_analysis(
             "repo_url": repo_url,
             "duration_ms": duration_ms,
         }
+        return _result
 
     except SandboxUnavailableError as exc:
-        return {
+        _result = {
             "status": "FAILED",
             "error_code": "SANDBOX_UNAVAILABLE",
             "detail": str(exc),
             "provider": provider.name,
         }
+        return _result
     except Exception as exc:
-        return {
+        _result = {
             "status": "FAILED",
             "error_code": "INTERNAL_ERROR",
             "detail": str(exc),
             "provider": provider.name,
         }
+        return _result
     finally:
-        # Always destroy the sandbox — even after failures, errors, or cancellation.
+        # Always attempt sandbox destruction — even after failures, errors,
+        # or cancellation.  Record the truthful outcome without raising.
+        # Mutate _result in place so the caller (job store) sees the
+        # cleanup evidence after the finally completes.
         if sandbox_info is not None:
+            _cleanup_status: dict[str, Any] = {
+                "sandbox_id": sandbox_info.sandbox_id,
+                "requested": True,
+                "confirmed": False,
+                "detail": None,
+            }
             try:
                 provider.destroy_sandbox(sandbox_info)
-            except Exception:
-                pass
+                _cleanup_status["confirmed"] = True
+            except Exception as _exc:
+                _cleanup_status["confirmed"] = False
+                _cleanup_status["detail"] = str(_exc)[:200]
+            if _result is not None:
+                _result["cleanup"] = _cleanup_status

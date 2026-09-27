@@ -77,6 +77,8 @@ def _provider_status() -> list[dict]:
 
 def _run_job_thread(job, request_obj) -> None:
     """Execute a repository analysis job in a background thread."""
+    if not job.claim():
+        return  # A queued cancellation won before this worker started.
     provider = _get_provider()
     if provider is None:
         job.transition("FAILED", {
@@ -127,10 +129,11 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/api/repository-example":
             example = ROOT / "examples" / "stale-role-service" / "traces" / "noisy_reproducing.json"
             return self.respond({
-                "synthetic": True,
+                "source": "owned_executable_fixture",
                 "trace": json.loads(example.read_text(encoding="utf-8")),
                 "repo_url": os.environ.get("SEQUENCEPROOF_EXAMPLE_REPO", ""),
                 "commit_sha": os.environ.get("SEQUENCEPROOF_EXAMPLE_SHA", ""),
+                "manifest_path": ".sequenceproof/manifest.json",
             })
         if self.path == "/api/sample":
             return self.respond({

@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "sequenceproof-stale-role",
+  "title": "Stale authorization after account switch",
+  "runner": {
+    "argv": ["python", "examples/stale-role-service/sequenceproof_runner.py"],
+    "fixed_argv": ["python", "examples/stale-role-service/sequenceproof_runner.py", "--fixed"],
+    "timeout_seconds": 15
+  }
+}

@@ -63,7 +63,7 @@ class Job:
     __slots__ = (
         "job_id", "created_at", "request", "phase", "events",
         "result", "sandbox_id", "provider_name",
-        "_lock",
+        "_lock", "_claimed",
     )
 
     def __init__(self, job_id: str, request: dict[str, Any]) -> None:
@@ -76,6 +76,24 @@ class Job:
         self.sandbox_id: str | None = None
         self.provider_name: str | None = None
         self._lock = threading.Lock()
+        self._claimed = False
+
+    def claim(self) -> bool:
+        """Atomically claim a queued job before any sandbox work begins."""
+        with self._lock:
+            if self.phase != "QUEUED" or self._claimed:
+                return False
+            self._claimed = True
+            return True
+
+    def cancel_if_queued(self) -> bool:
+        """Cancellation wins only before a worker claims this job."""
+        with self._lock:
+            if self.phase != "QUEUED" or self._claimed:
+                return False
+            self.phase = "CANCELLED"
+            self.events.append(JobEvent("CANCELLED", {"reason": "user requested"}))
+            return True
 
     def transition(self, phase: str, detail: dict[str, Any] | None = None) -> None:
         """Record a phase transition. Must be called from within the job thread."""
@@ -173,10 +191,7 @@ class JobStore:
             job = self._jobs.get(job_id)
             if job is None:
                 return False
-            if job.phase != "QUEUED":
-                return False
-            job.transition("CANCELLED", {"reason": "user requested"})
-            return True
+            return job.cancel_if_queued()
 
     def all_jobs(self) -> list[dict[str, Any]]:
         with self._lock:
