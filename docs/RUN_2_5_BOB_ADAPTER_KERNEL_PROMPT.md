@@ -176,8 +176,9 @@ Do not downgrade to the built-in checkout fixture.
 
 ### Daytona: hosted path
 
-Use the official `daytona` Python SDK as an optional dependency and
-`DAYTONA_API_KEY` from the server environment.
+Use the official `daytona` Python SDK as an optional dependency,
+`DAYTONA_API_KEY` from the server environment, and `DAYTONA_API_URL` when
+required (default to the official `https://app.daytona.io/api` endpoint).
 
 The provider must:
 
