@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: sequenceproof
+    runtime: docker
+    plan: free
+    region: oregon
+    branch: bob/run-2-5-adapter-kernel
+    envVars:
+      - key: DAYTONA_API_KEY
+        sync: false
+      - key: SEQUENCEPROOF_PROVIDER
+        value: daytona
+      - key: SEQUENCEPROOF_EXAMPLE_REPO
+        value: https://github.com/Syedsaadhhh/SequenceProof
+      - key: SEQUENCEPROOF_EXAMPLE_SHA
+        value: afc9aed7e844ac83ff40a101876d3fb16218f2a5
+      - key: HOST
+        value: 0.0.0.0
+      - key: SEQUENCEPROOF_PROTECT_CREDITS
+        value: "1"

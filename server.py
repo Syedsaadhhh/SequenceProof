@@ -75,6 +75,40 @@ def _provider_status() -> list[dict]:
     ]
 
 
+def _check_credit_protection(repo_url: str, headers, raw_body: dict) -> tuple[bool, str | None]:
+    """Protect Daytona cloud sandbox credits from unauthorized arbitrary public requests."""
+    canonical = repo_url.rstrip("/").removesuffix(".git").lower()
+    allowed_canonical = {
+        "https://github.com/syedsaadhhh/sequenceproof",
+        "https://github.com/x/y",
+        "https://github.com/octocat/hello-world",
+        "https://github.com/syedsaadhhh/credscan-lite",
+    }
+    extra = os.environ.get("SEQUENCEPROOF_ALLOWED_REPOS", "")
+    for r in extra.split(","):
+        if r.strip():
+            allowed_canonical.add(r.strip().rstrip("/").removesuffix(".git").lower())
+
+    if canonical in allowed_canonical:
+        return True, None
+
+    demo_key = os.environ.get("SEQUENCEPROOF_DEMO_KEY")
+    if demo_key:
+        provided = (
+            headers.get("x-sequenceproof-key")
+            or raw_body.get("demo_key")
+            or ""
+        )
+        if provided == demo_key:
+            return True, None
+
+    return False, (
+        "To protect Daytona sandbox credits, public job execution is restricted to the "
+        "verified SequenceProof repository (https://github.com/Syedsaadhhh/SequenceProof). "
+        "To execute arbitrary repositories, provide a valid demo key."
+    )
+
+
 def _run_job_thread(job, request_obj) -> None:
     """Execute a repository analysis job in a background thread."""
     if not job.claim():
@@ -131,8 +165,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.respond({
                 "source": "owned_executable_fixture",
                 "trace": json.loads(example.read_text(encoding="utf-8")),
-                "repo_url": os.environ.get("SEQUENCEPROOF_EXAMPLE_REPO", ""),
-                "commit_sha": os.environ.get("SEQUENCEPROOF_EXAMPLE_SHA", ""),
+                "repo_url": os.environ.get("SEQUENCEPROOF_EXAMPLE_REPO", "https://github.com/Syedsaadhhh/SequenceProof"),
+                "commit_sha": os.environ.get("SEQUENCEPROOF_EXAMPLE_SHA", "afc9aed7e844ac83ff40a101876d3fb16218f2a5"),
                 "manifest_path": ".sequenceproof/manifest.json",
             })
         if self.path == "/api/sample":
@@ -197,6 +231,12 @@ class Handler(BaseHTTPRequestHandler):
             except ValueError as exc:
                 return self.respond({"error": str(exc), "error_code": "INVALID_REQUEST"}, 400)
 
+            # Credit protection check for anonymous public traffic
+            if os.environ.get("SEQUENCEPROOF_PROTECT_CREDITS") == "1":
+                allowed, reason = _check_credit_protection(request_obj.repo_url, self.headers, raw)
+                if not allowed:
+                    return self.respond({"error": reason, "error_code": "DEMO_RESTRICTED"}, 403)
+
             try:
                 job = _job_store.create_job(raw)
             except ValueError as exc:
@@ -249,6 +289,6 @@ class Handler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "8000"))
-    host = os.environ.get("HOST", "127.0.0.1")
+    host = os.environ.get("HOST", "0.0.0.0")
     print(f"SequenceProof at http://{host}:{port}", flush=True)
     ThreadingHTTPServer((host, port), Handler).serve_forever()

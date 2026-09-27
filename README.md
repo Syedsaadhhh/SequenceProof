@@ -186,6 +186,18 @@ response shapes.
 
 See [the architecture](docs/ARCHITECTURE.md) and [observed build log](docs/BUILD_LOG.md).
 
+## IBM Bob IDE Development Workflow
+
+SequenceProof was designed and engineered using **IBM Bob IDE** as the primary pair-programming and agentic development environment:
+
+- **Proof invariant & failure oracle:** Task 01 utilized IBM Bob to develop the exact-failure invariant (`WRONG_CARD_CHARGED` and `STALE_ROLE_AUTHORIZATION`), ensuring that candidate traces are only accepted when fresh state execution reproduces the identical failure ID.
+- **Sandbox adapter kernel & cleanup:** Task 02 leveraged IBM Bob to implement the repository runner, the protocol-agnostic reduction kernel, provider isolation (Daytona and Docker), and truthful cleanup reporting with independent deletion verification.
+- **Session evidence:** Authentic IBM Bob session task summary screenshots are preserved in [`bob_sessions/`](bob_sessions/):
+  - `bob_sessions/sequenceproof_task01_proof_invariant_summary.png` (proof invariant & oracle)
+  - `bob_sessions/sequenceproof_task02_sandbox_kernel_summary.png` (sandbox kernel & cleanup verification)
+
+> **Architectural Boundary Note:** IBM Bob IDE was used strictly as the development and engineering environment. IBM Bob does not execute as an internal component or runtime service inside the deployed web application.
+
 ## Honest positioning
 
 - "Reduces an already-reproducing stateful trace against a real executable repository contract."
@@ -194,6 +206,7 @@ See [the architecture](docs/ARCHITECTURE.md) and [observed build log](docs/BUILD
 - "Locally reduced; one-minimal only when certified."
 - "The included payment fixture is a preview, not the product."
 - "Repositories opt in with a manifest and runner."
+- "IBM Bob IDE was used as the engineering pair programmer, not a runtime API."
 
 ## License
 
