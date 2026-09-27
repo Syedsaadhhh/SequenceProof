@@ -102,9 +102,12 @@ docker info
 python server.py
 ```
 
-Open `http://127.0.0.1:8000` and select **Analyze trace**. The UI calls the
-actual `/api/analyze` endpoint. Edit the JSON to test another card, remove a
-necessary step, or make a passing trace.
+Open `http://127.0.0.1:8000`. The **Repository proof workspace** is the primary
+real-execution path: provide a public GitHub HTTPS URL, immutable 40-character
+commit SHA, manifest path, and reproducing trace, then select **Execute in real
+sandbox**. Its phase timeline and evidence are populated only from `/api/jobs`.
+The lower **Analyze trace** workspace remains the synthetic checkout compatibility
+preview backed by `/api/analyze`.
 
 ```bash
 python -m unittest -v
