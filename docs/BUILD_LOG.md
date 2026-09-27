@@ -712,3 +712,32 @@ This is real hosted execution, not the fake provider and not the checkout previe
 - Run 2.5 implementation commit pushed as `1f3841efad2dbe7f578f622475409202c0b63fba`; GitHub Actions run 19 completed with conclusion `success`.
 
 The public fixture is deliberately controlled synthetic application code used to prove the repository contract and cloud execution path. It is not represented as a production incident.
+
+---
+
+## Run 2.5 SequenceProof Primary Repository Live Daytona E2E — 2026-09-27
+
+Observed executing against the official SequenceProof repository directly via the root manifest `.sequenceproof/manifest.json`.
+
+- Public execution repository: `https://github.com/Syedsaadhhh/SequenceProof`
+- Immutable commit SHA: `afc9aed7e844ac83ff40a101876d3fb16218f2a5`
+- Manifest path: `.sequenceproof/manifest.json`
+- Provider: Daytona cloud sandbox (`daytona==0.218.0`)
+- Job ID: `c0ba7995-5f6e-43d9-86e0-619ce872e83e`
+- Disposable sandbox ID: `2288b6fb-4726-40d5-9295-48b92d441b2e`
+- Input: 12-step `noisy_reproducing.json` trace
+- Backend phases: `QUEUED` → `STARTING_SANDBOX` → `CHECKING_OUT_REPOSITORY` → `REPRODUCING_ORIGINAL` → `REDUCING` → `CONFIRMING` → `VERIFYING_FIXED` → `COMPLETED`
+- Learned failure ID: `STALE_ROLE_AUTHORIZATION`
+- Reduction result: 12 noisy actions → 3 proof actions:
+  1. `{"action": "switch_account", "username": "alice", "role": "admin"}`
+  2. `{"action": "switch_account", "username": "bob", "role": "viewer"}`
+  3. `{"action": "perform_action", "name": "read_report"}`
+- Reduction candidate attempts: 21 candidate evaluations
+- Confirmation: 5/5 fresh runs returned `REPRODUCED` with `STALE_ROLE_AUTHORIZATION` across 5 distinct run IDs (`6cbcf6e1-79de-4656-b90f-cbbf3839faab`, `dab0c219-2802-482a-b5e5-8ea2510e4db7`, `e67df546-a73f-4a0d-9ba7-865fda407741`, `9e4d39de-5d80-4760-a7b3-4cb2c5a6cd89`, `7cd102a6-ab72-45a9-abe7-0a7eb5843a22`)
+- Corrected implementation: `fixed_passes=true` (returned `status: NOT_REPRODUCED`, run ID `9b168e06-7a71-4a31-992a-6cac8690d801`)
+- Bounded one-minimal certificate: certified `true` (3 single-removal checks performed)
+- Cleanup: `requested=true`, `confirmed=true`, `detail=null`
+- Independent post-run Daytona verification: SDK lookup `client.get('2288b6fb-4726-40d5-9295-48b92d441b2e')` raised `DaytonaNotFoundError` (confirmed completely destroyed).
+- Raw evidence file: `docs/RUN2_5_DAYTONA_LIVE_E2E_EVIDENCE.json`
+- Full regression suite: 92/92 tests passing in 118.988s.
+
