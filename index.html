@@ -15,7 +15,7 @@
         <span class="brand-descriptor">Executable stateful debugging</span>
       </div>
       <div class="top-badges">
-        <span class="badge badge-sample">Synthetic sample</span>
+        <span class="badge badge-sample">Checkout preview is synthetic</span>
         <span class="badge badge-bounded" title="Analysis bounds: ≤40 actions, ≤250 candidate checks, ≤32 KiB">Bounded analysis</span>
       </div>
     </header>
@@ -52,6 +52,53 @@
       </div>
     </div>
 
+    <!-- Primary workflow: server-backed repository execution. -->
+    <section class="repo-panel" aria-labelledby="repo-heading">
+      <div class="repo-heading">
+        <div><span class="repo-eyebrow">01 / REAL EXECUTION</span>
+          <h2 id="repo-heading">Repository proof workspace</h2>
+          <p>Run a reproducing trace against a public GitHub repository at an immutable commit. Results appear only after actual sandbox execution.</p>
+        </div>
+        <span id="repo-provider" class="repo-provider" role="status">Checking real sandbox availability…</span>
+      </div>
+      <div class="repo-form">
+        <label>Public GitHub HTTPS URL <input id="repo-url" type="url" placeholder="https://github.com/owner/repository" autocomplete="off"></label>
+        <label>Immutable commit SHA <input id="repo-sha" type="text" minlength="40" maxlength="40" pattern="[0-9a-f]{40}" placeholder="40 lowercase hexadecimal characters" spellcheck="false" autocomplete="off"></label>
+        <label>Manifest path <input id="repo-manifest" type="text" value=".sequenceproof/manifest.json" spellcheck="false"></label>
+      </div>
+      <div class="repo-trace-head">
+        <label for="repo-trace">Reproducing trace · JSON array · max 40 actions</label>
+        <button id="repo-load-example" type="button" class="btn btn-secondary">Load synthetic input fixture</button>
+      </div>
+      <textarea id="repo-trace" class="repo-trace" spellcheck="false" placeholder='[{"action":"your_real_action"}]'></textarea>
+      <div class="repo-actions">
+        <button id="repo-submit" type="button" class="btn btn-primary">Execute in real sandbox</button>
+        <button id="repo-cancel" type="button" class="btn btn-secondary" disabled>Cancel queued job</button>
+        <button id="repo-download" type="button" class="btn btn-secondary" disabled>Download server evidence JSON</button>
+      </div>
+      <p id="repo-status" class="repo-status" role="status" aria-live="polite">No repository job has been submitted.</p>
+      <div class="repo-meta">
+        <span>Phase: <strong id="repo-phase">NOT_STARTED</strong></span>
+        <span>Job: <code id="repo-job-id">—</code></span>
+        <span>Provider: <code id="repo-provider-used">—</code></span>
+      </div>
+      <div class="repo-result" aria-live="polite">
+        <h3>Server execution result</h3>
+        <p id="repo-summary" class="repo-summary">Awaiting an actual sandbox execution.</p>
+        <div class="repo-result-meta"><span>Failure: <code id="repo-failure">—</code></span><span>Commit: <code id="repo-commit">—</code></span></div>
+        <div class="repo-evidence-grid">
+          <details open><summary>Backend phase events (latest 30)</summary><div id="repo-events" class="repo-rows"></div></details>
+          <details><summary>Runner invocations · hashes and unique run IDs</summary><div id="repo-executions" class="repo-rows"></div></details>
+          <details><summary>Five independent confirmation results</summary><div id="repo-confirmations" class="repo-rows"></div></details>
+          <details><summary>Original executable evidence</summary><pre id="repo-original">—</pre></details>
+          <details><summary>Reduced proof · actual actions</summary><pre id="repo-reduced">—</pre></details>
+          <details><summary>Bounded minimality certificate</summary><pre id="repo-certificate">—</pre></details>
+        </div>
+      </div>
+      <p class="repo-disclaimer">Only public opt-in repositories. Included fixture is deliberately synthetic, never production incident evidence. No provider availability, candidate results or cleanup status is simulated. A confirmed sandbox deletion must be independently checked.</p>
+    </section>
+
+    <!-- Built-in checkout regression preview -->
     <!-- Workspace Grid -->
     <main class="workspace-grid" id="workspace-main">
       <!-- Zone 1: Trace Workspace (Left) -->
@@ -148,6 +195,7 @@
   <div id="a11y-announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
 
   <script src="/static/app.js"></script>
+  <script src="/static/repository.js"></script>
 </body>
 </html>
 

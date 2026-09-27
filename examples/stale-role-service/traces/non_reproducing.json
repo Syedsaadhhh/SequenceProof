@@ -1,0 +1,4 @@
+[
+  {"action": "switch_account", "username": "alice", "role": "admin"},
+  {"action": "perform_action", "name": "read_report"}
+]
