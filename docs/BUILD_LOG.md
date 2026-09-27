@@ -730,3 +730,40 @@ Observed executing against the official SequenceProof repository directly via th
 - Raw evidence file: `docs/RUN2_5_DAYTONA_LIVE_E2E_EVIDENCE.json`
 - Full regression suite: 92/92 tests passing in 118.988s.
 
+---
+
+## Run 2.5 Live Render Docker Web Service Deployment Verification — 2026-09-27
+
+Observed executing against the public production deployment hosted on Render.
+
+- **Live URL**: `https://sequenceproof.onrender.com/`
+- **Deployment model**: Single unified Docker container running Python server on Render's assigned `PORT` (listening on `0.0.0.0`). Serves landing page UI and `/api/jobs`.
+- **Runtime sandbox provider**: Daytona cloud (`daytona==0.218.0`) configured with `DAYTONA_API_KEY` in Render secret settings.
+- **Credit protection**: Verified active; anonymous arbitrary repository execution restricted to protect Daytona credits while keeping landing page and owned test trace fully accessible and demonstrable.
+- **Provider endpoint verification (`GET /api/sandbox/providers`)**:
+  ```json
+  {"providers": [{"name": "daytona", "available": true}, {"name": "docker", "available": false}]}
+  ```
+- **Job submission (`POST /api/jobs`)**:
+  - `job_id`: `f01787ad-4b38-49b9-8188-ef422aa8f587`
+  - `repo_url`: `https://github.com/Syedsaadhhh/SequenceProof`
+  - `commit_sha`: `afc9aed7e844ac83ff40a101876d3fb16218f2a5`
+  - `manifest_path`: `.sequenceproof/manifest.json`
+  - `disposable_sandbox_id`: `d908f182-e73f-4b99-a9a1-3c773f4153a6`
+- **Execution duration**: Completed in 11 seconds.
+- **Result summary**:
+  - `status`: `COMPLETED`
+  - `job_status`: `REPRODUCED`
+  - `failure_id`: `STALE_ROLE_AUTHORIZATION`
+  - `original_steps`: 12 actions
+  - `reduced_steps`: 3 actions
+  - `confirmations`: 5/5 fresh runs verified
+  - `candidate_attempts`: 31
+  - `minimality`: `one-minimal` certified
+  - `fixed_passes`: `true`
+  - `cleanup`: `requested: true`, `confirmed: true`, `detail: null`
+- **Independent deletion confirmation**:
+  - Lookup via Daytona SDK `client.get('d908f182-e73f-4b99-a9a1-3c773f4153a6')` confirmed `DaytonaNotFoundError` (destroyed with 0 leftover resources).
+- **Evidence artifact**: [`docs/RUN2_5_RENDER_DEPLOYED_E2E_EVIDENCE.json`](RUN2_5_RENDER_DEPLOYED_E2E_EVIDENCE.json)
+
+

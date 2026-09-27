@@ -1,0 +1,629 @@
+{
+  "deploy_url": "https://sequenceproof.onrender.com",
+  "job": {
+    "job_id": "f01787ad-4b38-49b9-8188-ef422aa8f587",
+    "phase": "COMPLETED",
+    "created_at": 1790500358.5178232,
+    "sandbox_id": "d908f182-e73f-4b99-a9a1-3c773f4153a6",
+    "provider_name": "daytona",
+    "request": {
+      "repo_url": "https://github.com/Syedsaadhhh/SequenceProof",
+      "commit_sha": "afc9aed7e844ac83ff40a101876d3fb16218f2a5",
+      "manifest_path": ".sequenceproof/manifest.json",
+      "trace_length": 12
+    },
+    "events": [
+      {
+        "phase": "QUEUED",
+        "timestamp": 1790500358.5178277,
+        "detail": {}
+      },
+      {
+        "phase": "STARTING_SANDBOX",
+        "timestamp": 1790500358.5179932,
+        "detail": {
+          "provider": "daytona"
+        }
+      },
+      {
+        "phase": "CHECKING_OUT_REPOSITORY",
+        "timestamp": 1790500359.6568503,
+        "detail": {
+          "sandbox_id": "d908f182-e73f-4b99-a9a1-3c773f4153a6",
+          "repo_url": "https://github.com/Syedsaadhhh/SequenceProof",
+          "commit_sha": "afc9aed7e844ac83ff40a101876d3fb16218f2a5"
+        }
+      },
+      {
+        "phase": "REPRODUCING_ORIGINAL",
+        "timestamp": 1790500359.7041554,
+        "detail": {
+          "trace_length": 12
+        }
+      },
+      {
+        "phase": "REDUCING",
+        "timestamp": 1790500359.9451177,
+        "detail": {
+          "failure_id": "STALE_ROLE_AUTHORIZATION"
+        }
+      },
+      {
+        "phase": "CONFIRMING",
+        "timestamp": 1790500367.0261798,
+        "detail": {
+          "reduced_length": 3
+        }
+      },
+      {
+        "phase": "VERIFYING_FIXED",
+        "timestamp": 1790500368.075225,
+        "detail": {}
+      },
+      {
+        "phase": "COMPLETED",
+        "timestamp": 1790500368.3409126,
+        "detail": {
+          "error_code": null,
+          "job_status": "REPRODUCED"
+        }
+      }
+    ],
+    "result": {
+      "status": "COMPLETED",
+      "job_status": "REPRODUCED",
+      "failure_id": "STALE_ROLE_AUTHORIZATION",
+      "manifest": {
+        "schema_version": 1,
+        "id": "sequenceproof-stale-role",
+        "title": "Stale authorization after account switch",
+        "runner": {
+          "argv": [
+            "python",
+            "examples/stale-role-service/sequenceproof_runner.py"
+          ],
+          "timeout_seconds": 15,
+          "fixed_argv": [
+            "python",
+            "examples/stale-role-service/sequenceproof_runner.py",
+            "--fixed"
+          ]
+        }
+      },
+      "original": {
+        "status": "REPRODUCED",
+        "failure_id": "STALE_ROLE_AUTHORIZATION",
+        "evidence": {
+          "expected_role": "viewer",
+          "authorized_as": "admin",
+          "user": "bob",
+          "action_name": "read_report",
+          "step": 8
+        },
+        "exit_code": 0,
+        "duration_seconds": 0.07856900710612535,
+        "run_id": "e0fb68c8-a08e-44b4-827d-e3f10d7633ce",
+        "runner_argv": [
+          "python",
+          "examples/stale-role-service/sequenceproof_runner.py"
+        ],
+        "stdout_last_line": "{\"schema_version\": 1, \"status\": \"REPRODUCED\", \"failure_id\": \"STALE_ROLE_AUTHORIZATION\", \"evidence\": {\"expected_role\": \"viewer\", \"authorized_as\": \"admin\", \"user\": \"bob\", \"action_name\": \"read_report\", \"step\": 8}}"
+      },
+      "original_steps": [
+        {
+          "action": "view_dashboard"
+        },
+        {
+          "action": "switch_account",
+          "username": "alice",
+          "role": "admin"
+        },
+        {
+          "action": "view_dashboard"
+        },
+        {
+          "action": "view_dashboard"
+        },
+        {
+          "action": "switch_account",
+          "username": "bob",
+          "role": "viewer"
+        },
+        {
+          "action": "view_dashboard"
+        },
+        {
+          "action": "view_dashboard"
+        },
+        {
+          "action": "perform_action",
+          "name": "read_report"
+        },
+        {
+          "action": "view_dashboard"
+        },
+        {
+          "action": "logout"
+        },
+        {
+          "action": "view_dashboard"
+        },
+        {
+          "action": "logout"
+        }
+      ],
+      "reduced_steps": [
+        {
+          "action": "switch_account",
+          "username": "alice",
+          "role": "admin"
+        },
+        {
+          "action": "switch_account",
+          "username": "bob",
+          "role": "viewer"
+        },
+        {
+          "action": "perform_action",
+          "name": "read_report"
+        }
+      ],
+      "trials": [
+        {
+          "status": "REPRODUCED",
+          "failure_id": "STALE_ROLE_AUTHORIZATION",
+          "run_id": "fe82f8bd-d088-445d-a38f-1384c87fe2a1",
+          "exit_code": 0,
+          "duration_seconds": 0.07846472412347794
+        },
+        {
+          "status": "REPRODUCED",
+          "failure_id": "STALE_ROLE_AUTHORIZATION",
+          "run_id": "2709eedc-3af6-4149-9576-2d11a5c94703",
+          "exit_code": 0,
+          "duration_seconds": 0.07715394208207726
+        },
+        {
+          "status": "REPRODUCED",
+          "failure_id": "STALE_ROLE_AUTHORIZATION",
+          "run_id": "684e5888-895e-4099-8fb3-7af881cfefd2",
+          "exit_code": 0,
+          "duration_seconds": 0.05939340079203248
+        },
+        {
+          "status": "REPRODUCED",
+          "failure_id": "STALE_ROLE_AUTHORIZATION",
+          "run_id": "2c1c8eb7-135f-44b0-93a9-bdcd9337a2ad",
+          "exit_code": 0,
+          "duration_seconds": 0.08129470283165574
+        },
+        {
+          "status": "REPRODUCED",
+          "failure_id": "STALE_ROLE_AUTHORIZATION",
+          "run_id": "78618f9b-9e4d-41ce-9dae-d68f3230fa19",
+          "exit_code": 0,
+          "duration_seconds": 0.07297505112364888
+        }
+      ],
+      "attempts": 31,
+      "minimality": {
+        "kind": "one-minimal",
+        "certified": true,
+        "checks": 3,
+        "statement": "No single retained step can be removed while preserving the exact failure ID."
+      },
+      "executions": [
+        {
+          "stage": "REPRODUCING_ORIGINAL",
+          "run_id": "e0fb68c8-a08e-44b4-827d-e3f10d7633ce",
+          "trace_length": 12,
+          "trace_sha256": "886ba942576d846492e52c3674e864af52e6991045f003b9f485c8b3a49508c5",
+          "status": "REPRODUCED",
+          "failure_id": "STALE_ROLE_AUTHORIZATION",
+          "exit_code": 0,
+          "duration_seconds": 0.07856900710612535
+        },
+        {
+          "stage": "REDUCING",
+          "run_id": "c55344ef-27d6-469d-9449-f7f11e10f97f",
+          "trace_length": 6,
+          "trace_sha256": "80f8af51c79b399c20326e1f519cd94ce18572242a9c86ced562d3a87608661f",
+          "status": "INVALID_TRACE",
+          "failure_id": null,
+          "exit_code": 0,
+          "duration_seconds": 0.08182883635163307
+        },
+        {
+          "stage": "REDUCING",
+          "run_id": "d8f592c1-afd4-47f5-b3e0-dd1cc278e072",
+          "trace_length": 6,
+          "trace_sha256": "d50b0417c428f14cb4e71aaee78ce7395a655a98ffe924fd863572ff181996ce",
+          "status": "NOT_REPRODUCED",
+          "failure_id": null,
+          "exit_code": 0,
+          "duration_seconds": 0.0811183680780232
+        },
+        {
+          "stage": "REDUCING",
+          "run_id": "5f9c9ba3-688b-4a5e-9d6d-b3de62200334",
+          "trace_length": 9,
+          "trace_sha256": "0f0a802f4690e6b2811b47db0c9e8cb28d634e5817e94545163779972cb4af29",
+          "status": "NOT_REPRODUCED",
+          "failure_id": null,
+          "exit_code": 0,
+          "duration_seconds": 0.08281179890036583
+        },
+        {
+          "stage": "REDUCING",
+          "run_id": "37a610a7-5440-4ba9-8783-e447fab5be57",
+          "trace_length": 9,
+          "trace_sha256": "2d4f8657b955c6fd3c5d5a772c050cb4fe3607ed2be6974e84d7c79c8863ae11",
+          "status": "NOT_REPRODUCED",
+          "failure_id": null,
+          "exit_code": 0,
+          "duration_seconds": 0.08360365871340036
+        },
+        {
+          "stage": "REDUCING",
+          "run_id": "68e51af9-74c6-4875-b454-f95eccd12d48",
+          "trace_length": 9,
+          "trace_sha256": "a69c0285ebb5f43891b1c9e16278edc97bbb79c798dd63b42f290fa09dc69cbf",
+          "status": "NOT_REPRODUCED",
+          "failure_id": null,
+          "exit_code": 0,
+          "duration_seconds": 0.1241112812422216
+        },
+        {
+          "stage": "REDUCING",
+          "run_id": "848b01bd-8b42-4880-b6aa-14fd43b02468",
+          "trace_length": 9,
+          "trace_sha256": "9c33d4469ec7379d3ec845c9422ad1a829b298389fe4917889d4cf6d30c2be3a",
+          "status": "REPRODUCED",
+          "failure_id": "STALE_ROLE_AUTHORIZATION",
+          "exit_code": 0,
+          "duration_seconds": 0.07693230593577027
+        },
+        {
+          "stage": "REDUCING",
+          "run_id": "be5165ff-6d5b-429a-8797-6894dd37ab30",
+          "trace_length": 6,
+          "trace_sha256": "19f5fc8d0cd8914da9252b5a2506e9fde3b80fc0e57fcd94e4fbe78e371dfe1a",
+          "status": "NOT_REPRODUCED",
+          "failure_id": null,
+          "exit_code": 0,
+          "duration_seconds": 0.0824032393284142
+        },
+        {
+          "stage": "REDUCING",
+          "run_id": "429e9463-9ed1-4b34-b110-7db39f2c705a",
+          "trace_length": 6,
+          "trace_sha256": "891d27c909bb5f98d584f31da5133b7557746c7b69692f541793e2cff215a4a9",
+          "status": "NOT_REPRODUCED",
+          "failure_id": null,
+          "exit_code": 0,
+          "duration_seconds": 0.08725355798378587
+        },
+        {
+          "stage": "REDUCING",
+          "run_id": "48417ecc-045a-4065-9371-06050d14bbf0",
+          "trace_length": 6,
+          "trace_sha256": "d50b0417c428f14cb4e71aaee78ce7395a655a98ffe924fd863572ff181996ce",
+          "status": "NOT_REPRODUCED",
+          "failure_id": null,
+          "exit_code": 0,
+          "duration_seconds": 0.07520987512543797
+        },
+        {
+          "stage": "REDUCING",
+          "run_id": "28b84954-9456-4ebc-8d73-a90a89540a50",
+          "trace_length": 7,
+          "trace_sha256": "4502d82d583d618ff378f7b23190ea8019d85ef187c79b8b45de9fc33d168d01",
+          "status": "NOT_REPRODUCED",
+          "failure_id": null,
+          "exit_code": 0,
+          "duration_seconds": 0.07500255899503827
+        },
+        {
+          "stage": "REDUCING",
+          "run_id": "3a886a1b-0f7a-411c-ac59-47bf9180cb64",
+          "trace_length": 7,
+          "trace_sha256": "30514711f5ae1b455cb5fa50bdf2a5d65490a6f677fb0a1545029278abaf35ed",
+          "status": "REPRODUCED",
+          "failure_id": "STALE_ROLE_AUTHORIZATION",
+          "exit_code": 0,
+          "duration_seconds": 0.07278416631743312
+        },
+        {
+          "stage": "REDUCING",
+          "run_id": "ff1d2927-29bb-4853-a67f-2e401b1058c8",
+          "trace_length": 5,
+          "trace_sha256": "c4bace5a3769e51504c34d2de6d07a443d10d3bfb2615a804857f8f2b939c49e",
+          "status": "NOT_REPRODUCED",
+          "failure_id": null,
+          "exit_code": 0,
+          "duration_seconds": 0.0717058889567852
+        },
+        {
+          "stage": "REDUCING",
+          "run_id": "7dafb4d4-32ca-4a4c-8d07-21734fffe247",
+          "trace_length": 5,
+          "trace_sha256": "f622be7a4d1bb89fb2eabdd69f7d6a6d5a8944dae59185ce88c5b2df81a4a5c7",
+          "status": "NOT_REPRODUCED",
+          "failure_id": null,
+          "exit_code": 0,
+          "duration_seconds": 0.07810662500560284
+        },
+        {
+          "stage": "REDUCING",
+          "run_id": "875d4a06-5153-4c1b-aa25-077e5417cb11",
+          "trace_length": 5,
+          "trace_sha256": "0e596a5cb6316ab6fa607554e00b79e4fd02e7393cb306c20f60f874e14b8c45",
+          "status": "NOT_REPRODUCED",
+          "failure_id": null,
+          "exit_code": 0,
+          "duration_seconds": 0.07734012696892023
+        },
+        {
+          "stage": "REDUCING",
+          "run_id": "57dce669-4a05-42ee-b2f9-c8b3d6bfd98a",
+          "trace_length": 6,
+          "trace_sha256": "230c82d7e24a1cc0e9a9a9ff3f9fc160f82f4ebe7e88fb2b57a4948b3be62d8d",
+          "status": "REPRODUCED",
+          "failure_id": "STALE_ROLE_AUTHORIZATION",
+          "exit_code": 0,
+          "duration_seconds": 0.07781721791252494
+        },
+        {
+          "stage": "REDUCING",
+          "run_id": "fbcfe701-7196-487b-a811-88518da1bbc8",
+          "trace_length": 4,
+          "trace_sha256": "729f02a0fe80304aae0c6edaed4db71fab93b48b18105c313dcf3b53ce278cab",
+          "status": "NOT_REPRODUCED",
+          "failure_id": null,
+          "exit_code": 0,
+          "duration_seconds": 0.07685937499627471
+        },
+        {
+          "stage": "REDUCING",
+          "run_id": "7d0cf9ea-ea10-40d4-b475-ebb90c163051",
+          "trace_length": 4,
+          "trace_sha256": "7c62a787bdcb7c6b447bff6e9b9add8162ad4365ac7fa5dffe7a774edfe1e301",
+          "status": "NOT_REPRODUCED",
+          "failure_id": null,
+          "exit_code": 0,
+          "duration_seconds": 0.07667376007884741
+        },
+        {
+          "stage": "REDUCING",
+          "run_id": "b89fc231-b5c1-4188-bf12-07b014f08962",
+          "trace_length": 4,
+          "trace_sha256": "65306895b9c1240b0b8a572008ce0b1e244432f86fd125c65567a4259e671e75",
+          "status": "NOT_REPRODUCED",
+          "failure_id": null,
+          "exit_code": 0,
+          "duration_seconds": 0.07322294684126973
+        },
+        {
+          "stage": "REDUCING",
+          "run_id": "d40069b7-afe3-494a-81b6-fbac6d46223f",
+          "trace_length": 5,
+          "trace_sha256": "717a8d7a59a389bf70628d470f1deefdd50c323bb8f4d639dc5423778ad976e6",
+          "status": "REPRODUCED",
+          "failure_id": "STALE_ROLE_AUTHORIZATION",
+          "exit_code": 0,
+          "duration_seconds": 0.07540841028094292
+        },
+        {
+          "stage": "REDUCING",
+          "run_id": "028290c7-2117-49ee-af1b-8a775f4afc10",
+          "trace_length": 4,
+          "trace_sha256": "729f02a0fe80304aae0c6edaed4db71fab93b48b18105c313dcf3b53ce278cab",
+          "status": "NOT_REPRODUCED",
+          "failure_id": null,
+          "exit_code": 0,
+          "duration_seconds": 0.07868645898997784
+        },
+        {
+          "stage": "REDUCING",
+          "run_id": "4ad023e0-a335-4e52-a36c-f33861a52015",
+          "trace_length": 4,
+          "trace_sha256": "3f09b89e5853d5dcb0b27ae8957b2f637eb49b592742195f341c26e66ceb3534",
+          "status": "NOT_REPRODUCED",
+          "failure_id": null,
+          "exit_code": 0,
+          "duration_seconds": 0.07628984190523624
+        },
+        {
+          "stage": "REDUCING",
+          "run_id": "47e95bdd-27ad-49d4-852b-f7a584d29cb2",
+          "trace_length": 4,
+          "trace_sha256": "b30e783ce099c6a9ff7ea22d854fc42d1d4c8089cee4df7ad3f1046449508867",
+          "status": "REPRODUCED",
+          "failure_id": "STALE_ROLE_AUTHORIZATION",
+          "exit_code": 0,
+          "duration_seconds": 0.0736474166624248
+        },
+        {
+          "stage": "REDUCING",
+          "run_id": "8074cf75-fd1b-4724-b5a5-2de391650351",
+          "trace_length": 3,
+          "trace_sha256": "07d7763373ac73f1bad4a5284f8bb63952bd17878bd8aef2fb126efc501125b1",
+          "status": "NOT_REPRODUCED",
+          "failure_id": null,
+          "exit_code": 0,
+          "duration_seconds": 0.07354910485446453
+        },
+        {
+          "stage": "REDUCING",
+          "run_id": "93581b81-6979-477e-ae06-7f48a30eada0",
+          "trace_length": 3,
+          "trace_sha256": "dab02f59568cb4b69a8ca42014beb121ea4662d2f4176c3be009812cd2a52030",
+          "status": "NOT_REPRODUCED",
+          "failure_id": null,
+          "exit_code": 0,
+          "duration_seconds": 0.08034632913768291
+        },
+        {
+          "stage": "REDUCING",
+          "run_id": "b8d1740b-7106-4f29-bb88-c03e52ee8bdd",
+          "trace_length": 3,
+          "trace_sha256": "8f0bbec651eb1814c17bfbf6d1c936875fb09f240310339dcd359fd435ee42dc",
+          "status": "REPRODUCED",
+          "failure_id": "STALE_ROLE_AUTHORIZATION",
+          "exit_code": 0,
+          "duration_seconds": 0.07985074678435922
+        },
+        {
+          "stage": "REDUCING",
+          "run_id": "9fd33d98-6fcc-4fe9-9eba-e845adca49b5",
+          "trace_length": 2,
+          "trace_sha256": "c10f6015728d93e49ffdb131eebf79f6512a1d2cc251c8264aecfc3528b842cb",
+          "status": "NOT_REPRODUCED",
+          "failure_id": null,
+          "exit_code": 0,
+          "duration_seconds": 0.08267543604597449
+        },
+        {
+          "stage": "REDUCING",
+          "run_id": "83085941-ea4a-48b3-92b8-40157c2ee98d",
+          "trace_length": 2,
+          "trace_sha256": "d118c7eda6743eabaf482519fb78c0b2f7f9be42322ab642ba485ee3b7d4f8bb",
+          "status": "NOT_REPRODUCED",
+          "failure_id": null,
+          "exit_code": 0,
+          "duration_seconds": 0.08729805797338486
+        },
+        {
+          "stage": "REDUCING",
+          "run_id": "22b303ab-07a4-4ac7-82bc-807265b586a3",
+          "trace_length": 2,
+          "trace_sha256": "ff1c743c92b6e3e36073152ec53a454650c24ba26c5f8fd744211e9cf3a42d18",
+          "status": "NOT_REPRODUCED",
+          "failure_id": null,
+          "exit_code": 0,
+          "duration_seconds": 0.07821204699575901
+        },
+        {
+          "stage": "REDUCING",
+          "run_id": "c862efcb-4894-46f2-ad57-c56154194d65",
+          "trace_length": 2,
+          "trace_sha256": "c10f6015728d93e49ffdb131eebf79f6512a1d2cc251c8264aecfc3528b842cb",
+          "status": "NOT_REPRODUCED",
+          "failure_id": null,
+          "exit_code": 0,
+          "duration_seconds": 0.0810187659226358
+        },
+        {
+          "stage": "REDUCING",
+          "run_id": "e55174f3-bb43-4d95-9e8d-bd1e3a95f1c7",
+          "trace_length": 2,
+          "trace_sha256": "d118c7eda6743eabaf482519fb78c0b2f7f9be42322ab642ba485ee3b7d4f8bb",
+          "status": "NOT_REPRODUCED",
+          "failure_id": null,
+          "exit_code": 0,
+          "duration_seconds": 0.0784014230594039
+        },
+        {
+          "stage": "REDUCING",
+          "run_id": "f9431306-263b-42f9-9947-bbcdfbb049e4",
+          "trace_length": 2,
+          "trace_sha256": "ff1c743c92b6e3e36073152ec53a454650c24ba26c5f8fd744211e9cf3a42d18",
+          "status": "NOT_REPRODUCED",
+          "failure_id": null,
+          "exit_code": 0,
+          "duration_seconds": 0.07238605618476868
+        },
+        {
+          "stage": "CONFIRMING",
+          "run_id": "fe82f8bd-d088-445d-a38f-1384c87fe2a1",
+          "trace_length": 3,
+          "trace_sha256": "8f0bbec651eb1814c17bfbf6d1c936875fb09f240310339dcd359fd435ee42dc",
+          "status": "REPRODUCED",
+          "failure_id": "STALE_ROLE_AUTHORIZATION",
+          "exit_code": 0,
+          "duration_seconds": 0.07846472412347794
+        },
+        {
+          "stage": "CONFIRMING",
+          "run_id": "2709eedc-3af6-4149-9576-2d11a5c94703",
+          "trace_length": 3,
+          "trace_sha256": "8f0bbec651eb1814c17bfbf6d1c936875fb09f240310339dcd359fd435ee42dc",
+          "status": "REPRODUCED",
+          "failure_id": "STALE_ROLE_AUTHORIZATION",
+          "exit_code": 0,
+          "duration_seconds": 0.07715394208207726
+        },
+        {
+          "stage": "CONFIRMING",
+          "run_id": "684e5888-895e-4099-8fb3-7af881cfefd2",
+          "trace_length": 3,
+          "trace_sha256": "8f0bbec651eb1814c17bfbf6d1c936875fb09f240310339dcd359fd435ee42dc",
+          "status": "REPRODUCED",
+          "failure_id": "STALE_ROLE_AUTHORIZATION",
+          "exit_code": 0,
+          "duration_seconds": 0.05939340079203248
+        },
+        {
+          "stage": "CONFIRMING",
+          "run_id": "2c1c8eb7-135f-44b0-93a9-bdcd9337a2ad",
+          "trace_length": 3,
+          "trace_sha256": "8f0bbec651eb1814c17bfbf6d1c936875fb09f240310339dcd359fd435ee42dc",
+          "status": "REPRODUCED",
+          "failure_id": "STALE_ROLE_AUTHORIZATION",
+          "exit_code": 0,
+          "duration_seconds": 0.08129470283165574
+        },
+        {
+          "stage": "CONFIRMING",
+          "run_id": "78618f9b-9e4d-41ce-9dae-d68f3230fa19",
+          "trace_length": 3,
+          "trace_sha256": "8f0bbec651eb1814c17bfbf6d1c936875fb09f240310339dcd359fd435ee42dc",
+          "status": "REPRODUCED",
+          "failure_id": "STALE_ROLE_AUTHORIZATION",
+          "exit_code": 0,
+          "duration_seconds": 0.07297505112364888
+        },
+        {
+          "stage": "VERIFYING_FIXED",
+          "run_id": "816d132d-8f3e-42d3-bbf0-0c0f1bf919f4",
+          "trace_length": 3,
+          "trace_sha256": "8f0bbec651eb1814c17bfbf6d1c936875fb09f240310339dcd359fd435ee42dc",
+          "status": "NOT_REPRODUCED",
+          "failure_id": null,
+          "exit_code": 0,
+          "duration_seconds": 0.07119621802121401
+        }
+      ],
+      "fixed_result": {
+        "status": "NOT_REPRODUCED",
+        "failure_id": null,
+        "evidence": null,
+        "exit_code": 0,
+        "duration_seconds": 0.07119621802121401,
+        "run_id": "816d132d-8f3e-42d3-bbf0-0c0f1bf919f4",
+        "runner_argv": [
+          "python",
+          "examples/stale-role-service/sequenceproof_runner.py",
+          "--fixed"
+        ],
+        "stdout_last_line": "{\"schema_version\": 1, \"status\": \"NOT_REPRODUCED\", \"failure_id\": null, \"evidence\": null}"
+      },
+      "fixed_passes": true,
+      "provider": "daytona",
+      "sandbox_id": "d908f182-e73f-4b99-a9a1-3c773f4153a6",
+      "commit_sha": "afc9aed7e844ac83ff40a101876d3fb16218f2a5",
+      "repo_url": "https://github.com/Syedsaadhhh/SequenceProof",
+      "duration_ms": 9761.31,
+      "cleanup": {
+        "sandbox_id": "d908f182-e73f-4b99-a9a1-3c773f4153a6",
+        "requested": true,
+        "confirmed": true,
+        "detail": null
+      }
+    }
+  },
+  "execution_timestamp": 1790500399.2906792,
+  "total_elapsed_seconds": 11,
+  "pinned_sha": "afc9aed7e844ac83ff40a101876d3fb16218f2a5",
+  "repo_url": "https://github.com/Syedsaadhhh/SequenceProof"
+}

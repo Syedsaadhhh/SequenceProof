@@ -22,6 +22,7 @@ In distributed and stateful software systems, bugs rarely emerge from a single i
 The application is packaged as a single unified Docker container serving both the frontend UI and the REST API (`/api/jobs`, `/api/sandbox/providers`).
 
 ### Render Blueprint / Manual Deployment
+- **Live Deployment URL**: [https://sequenceproof.onrender.com/](https://sequenceproof.onrender.com/)
 - **Repository**: `https://github.com/Syedsaadhhh/SequenceProof`
 - **Branch**: `bob/run-2-5-adapter-kernel`
 - **Runtime**: `Docker` (using root `Dockerfile`)
@@ -60,6 +61,13 @@ Conducted on the live public repository `https://github.com/Syedsaadhhh/Sequence
 - **Minimality Guarantee**: Certified `one-minimal` (3 single-step-removal checks)
 - **Cleanup Status**: `requested: true`, `confirmed: true`, `detail: null`
 - **Independent Verification**: SDK lookup `client.get('2288b6fb-4726-40d5-9295-48b92d441b2e')` returned `DaytonaNotFoundError` (destroyed with zero orphaned sandboxes).
+
+### Live Production Execution via Render URL (`https://sequenceproof.onrender.com`)
+Directly executed through the public Render deployment (Job ID: `f01787ad-4b38-49b9-8188-ef422aa8f587`, raw record in [`docs/RUN2_5_RENDER_DEPLOYED_E2E_EVIDENCE.json`](RUN2_5_RENDER_DEPLOYED_E2E_EVIDENCE.json)):
+- **Sandbox ID**: `d908f182-e73f-4b99-a9a1-3c773f4153a6`
+- **Execution Time**: Completed in 11 seconds
+- **Output**: 12 actions → 3 actions, `STALE_ROLE_AUTHORIZATION`, 5/5 fresh confirmations, `one-minimal` certified, `fixed_passes: true`
+- **Cleanup**: `requested: true`, `confirmed: true`, `detail: null` (confirmed deleted via Daytona SDK 404 lookup)
 
 ---
 
